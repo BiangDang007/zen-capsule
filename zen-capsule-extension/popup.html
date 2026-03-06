@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>Zen Capsule</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width: 320px;
+    background: #0e0c0a;
+    color: #e8ddd0;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    overflow: hidden;
+  }
+  .header {
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid rgba(212,136,74,0.12);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-size: 15px; color: #c9a96e; }
+  .logo em { color: #d4884a; font-style: italic; }
+  .status-pill {
+    font-size: 9px; letter-spacing: 0.15em; padding: 3px 8px;
+    border-radius: 10px; background: rgba(107,94,80,0.2); color: #6b5e50; transition: all 0.3s;
+  }
+  .status-pill.active { background: rgba(212,136,74,0.15); color: #d4884a; }
+
+  #loginView { padding: 24px 20px; }
+  .view-title { font-size: 9px; letter-spacing: 0.25em; color: #6b5e50; margin-bottom: 16px; text-transform: uppercase; }
+  .field {
+    width: 100%; background: #161310; border: 1px solid rgba(212,136,74,0.12);
+    padding: 10px 12px; color: #e8ddd0; font-family: 'Space Mono', monospace;
+    font-size: 11px; outline: none; border-radius: 2px; margin-bottom: 8px;
+  }
+  .field:focus { border-color: rgba(212,136,74,0.35); }
+  .btn-primary {
+    width: 100%; padding: 11px; background: #d4884a; border: none;
+    color: #0e0c0a; font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 0.1em; cursor: pointer; border-radius: 2px;
+  }
+  .btn-primary:hover { background: #e09a5a; }
+  .btn-ghost {
+    width: 100%; padding: 10px; margin-top: 6px; background: none;
+    border: 1px solid rgba(212,136,74,0.15); color: #6b5e50;
+    font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; border-radius: 2px;
+  }
+  .btn-ghost:hover { color: #d4884a; border-color: rgba(212,136,74,0.3); }
+  .err-msg {
+    font-size: 10px; color: #e07070; margin-bottom: 10px;
+    padding: 7px 10px; background: rgba(180,60,60,0.1);
+    border: 1px solid rgba(180,60,60,0.2); display: none;
+  }
+
+  #setupView { display: none; padding: 20px; }
+  .goal-input {
+    width: 100%; background: #161310; border: 1px solid rgba(212,136,74,0.15);
+    border-radius: 2px; padding: 12px 14px; color: #e8ddd0;
+    font-family: 'Space Mono', monospace; font-size: 12px; outline: none;
+    resize: none; margin-bottom: 14px; line-height: 1.6;
+  }
+  .goal-input:focus { border-color: rgba(212,136,74,0.35); }
+  .goal-input::placeholder { color: #4a3e32; }
+  .dur-label { font-size: 9px; letter-spacing: 0.25em; color: #6b5e50; margin-bottom: 8px; text-transform: uppercase; }
+  .dur-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 6px; }
+  .dur-btn {
+    padding: 8px 4px; background: #161310; border: 1px solid rgba(212,136,74,0.12);
+    color: #6b5e50; font-family: 'Space Mono', monospace; font-size: 11px;
+    cursor: pointer; border-radius: 2px; text-align: center;
+  }
+  .dur-btn:hover { border-color: rgba(212,136,74,0.3); color: #c9a96e; }
+  .dur-btn.selected { background: rgba(212,136,74,0.12); border-color: #d4884a; color: #d4884a; }
+  .custom-dur { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+  .custom-input {
+    width: 70px; background: #161310; border: 1px solid rgba(212,136,74,0.12);
+    padding: 7px 10px; color: #e8ddd0; font-family: 'Space Mono', monospace;
+    font-size: 11px; outline: none; border-radius: 2px;
+  }
+  .custom-input:focus { border-color: rgba(212,136,74,0.35); }
+  .custom-label { font-size: 10px; color: #6b5e50; }
+  .start-btn {
+    width: 100%; padding: 13px; background: #d4884a; border: none; color: #0e0c0a;
+    font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.12em;
+    cursor: pointer; border-radius: 2px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .start-btn:hover { background: #e09a5a; }
+  .setup-err { font-size: 10px; color: #e07070; text-align: center; margin-top: 8px; display: none; }
+
+  #activeView { display: none; }
+  .timer-wrap { padding: 20px 20px 0; display: flex; flex-direction: column; align-items: center; }
+  .timer-ring-wrap { position: relative; width: 130px; height: 130px; margin-bottom: 12px; }
+  .timer-ring-wrap svg { transform: rotate(-90deg); }
+  .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .timer-num { font-size: 26px; color: #d4884a; letter-spacing: 0.05em; line-height: 1; }
+  .timer-sub { font-size: 8px; color: #6b5e50; letter-spacing: 0.2em; margin-top: 3px; }
+  .active-goal { font-size: 11px; color: #c9a96e; text-align: center; max-width: 260px; line-height: 1.6; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .active-intercepts { font-size: 10px; color: #6b5e50; margin-bottom: 16px; }
+  .shield-bar {
+    margin: 0 20px; background: rgba(107,94,80,0.08); border: 1px solid rgba(107,94,80,0.18);
+    padding: 11px 14px; border-radius: 2px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .shield-left { display: flex; align-items: center; gap: 8px; }
+  .shield-label { font-size: 10px; letter-spacing: 0.15em; color: #d4884a; }
+  .shield-sub { font-size: 9px; color: #6b5e50; margin-top: 2px; }
+  .shield-count { font-size: 22px; color: #8a5030; }
+  .end-btn {
+    margin: 0 20px 20px; width: calc(100% - 40px); padding: 10px; background: none;
+    border: 1px solid rgba(212,136,74,0.18); color: #6b5e50;
+    font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; border-radius: 2px;
+  }
+  .end-btn:hover { border-color: rgba(212,136,74,0.4); color: #d4884a; }
+
+  #breakView { display: none; }
+  .break-inner { padding: 16px 20px 0; }
+  .summary-box {
+    background: #161310; border: 1px solid rgba(212,136,74,0.1);
+    padding: 14px; max-height: 240px; overflow-y: auto; margin-bottom: 12px;
+  }
+
+  .footer {
+    padding: 10px 20px; border-top: 1px solid rgba(212,136,74,0.08);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .open-link { font-size: 10px; color: #4a3e32; cursor: pointer; text-decoration: none; }
+  .open-link:hover { color: #d4884a; }
+  .logout-btn {
+    background: none; border: none; color: #3a3020; font-size: 10px;
+    cursor: pointer; font-family: 'Space Mono', monospace; display: none;
+  }
+  .logout-btn:hover { color: #6b5e50; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Zen <em>Capsule</em></div>
+  <div class="status-pill" id="statusPill">待機</div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginView">
+  <div class="view-title">登入以開始使用</div>
+  <div class="err-msg" id="loginErr"></div>
+  <input class="field" id="emailInput" type="email" placeholder="email@example.com">
+  <input class="field" id="passInput" type="password" placeholder="密碼">
+  <button class="btn-primary" id="loginBtn">登入</button>
+  <button class="btn-ghost" id="registerBtn">前往網站註冊 →</button>
+</div>
+
+<!-- SETUP -->
+<div id="setupView">
+  <div class="view-title">設定今次專注</div>
+  <textarea class="goal-input" id="goalInput" rows="2" placeholder="你這次想完成什麼？"></textarea>
+  <div class="dur-label">專注時長</div>
+  <div class="dur-options">
+    <button class="dur-btn selected" id="dur25">25 分</button>
+    <button class="dur-btn" id="dur45">45 分</button>
+    <button class="dur-btn" id="dur90">90 分</button>
+    <button class="dur-btn" id="durX">自訂</button>
+  </div>
+  <div class="custom-dur" id="customDurRow" style="display:none;">
+    <input class="custom-input" id="customDurInput" type="number" min="1" max="300" placeholder="分鐘數">
+    <span class="custom-label">分鐘</span>
+  </div>
+  <button class="start-btn" id="startBtn">
+    <span>🧘</span><span>開始深潛 · 啟動封鎖</span>
+  </button>
+  <div class="setup-err" id="setupErr"></div>
+</div>
+
+<!-- ACTIVE -->
+<div id="activeView">
+  <div class="timer-wrap">
+    <div class="timer-ring-wrap">
+      <svg width="130" height="130" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r="56" fill="none" stroke="rgba(212,136,74,0.07)" stroke-width="5"/>
+        <circle id="timerRing" cx="65" cy="65" r="56" fill="none"
+          stroke="#d4884a" stroke-width="5" stroke-dasharray="351.9" stroke-dashoffset="0"
+          stroke-linecap="round" style="transition:stroke-dashoffset 1s linear;"/>
+      </svg>
+      <div class="timer-center">
+        <div class="timer-num" id="timerNum">--:--</div>
+        <div class="timer-sub">剩餘時間</div>
+      </div>
+    </div>
+    <div class="active-goal" id="activeGoal"></div>
+    <div class="active-intercepts" id="activeIntercepts">已攔截 0 封</div>
+  </div>
+  <div class="shield-bar">
+    <div class="shield-left">
+      <span style="font-size:18px;">🛡</span>
+      <div>
+        <div class="shield-label">FOCUS SHIELD 啟動中</div>
+        <div class="shield-sub">Gmail 通知封鎖中</div>
+      </div>
+    </div>
+    <div class="shield-count" id="shieldCount">0</div>
+  </div>
+  <button class="end-btn" id="endBtn">結束專注</button>
+</div>
+
+<!-- BREAK -->
+<div id="breakView">
+  <div class="break-inner">
+    <div class="view-title">☕ 休息時間 · 信件摘要</div>
+    <div class="summary-box" id="summaryContent">
+      <div style="color:#6b5e50;font-size:11px;">載入中...</div>
+    </div>
+    <button class="start-btn" id="continueBtn">重新開始深潛 →</button>
+  </div>
+</div>
+
+<div class="footer">
+  <span class="open-link" id="openSiteBtn">開啟完整介面 →</span>
+  <button class="logout-btn" id="logoutBtn">登出</button>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

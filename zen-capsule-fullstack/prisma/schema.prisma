@@ -1,0 +1,150 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile       Profile?
+  sessions      Session[]
+  focusSessions FocusSession[]
+  thoughts      Thought[]
+  whitelist     Whitelist[]
+  behaviorLogs  BehaviorLog[]
+  devices       Device[]
+}
+
+model Profile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyGoalMinutes  Int      @default(240)
+  breakDuration     Int      @default(5)   // minutes
+  soundscape        String   @default("white_noise")
+  amberFilterOn     Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+// JWT refresh token store
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  deviceId     String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+// Registered devices for cross-device sync
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   // "Chrome · MacBook" | "iPhone 15"
+  platform  Platform
+  pushToken String?  // for mobile push
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+// A single focus block (start → end)
+model FocusSession {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal             String    // user's stated intention
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  durationSeconds  Int?      // computed on end
+  interceptCount   Int       @default(0)
+  phase            Phase     @default(FOCUS)
+  createdAt        DateTime  @default(now())
+}
+
+// Quick thoughts captured via Alt+S
+model Thought {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  sessionId String?
+  createdAt DateTime @default(now())
+}
+
+// Emergency firewall whitelist
+model Whitelist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  contact   String   // email or phone
+  priority  Int      @default(1)
+  createdAt DateTime @default(now())
+}
+
+enum Phase {
+  RITUAL
+  FOCUS
+  BREAK
+}
+
+enum Platform {
+  CHROME
+  IOS
+  ANDROID
+}
+
+// ── Behaviour log ─────────────────────────────────
+model BehaviorLog {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderEmail     String?
+  senderName      String?
+  subject         String
+  preview         String
+  isWhitelisted   Boolean     @default(false)
+  repeatCount     Int         @default(1)
+  hourOfDay       Int
+  dayOfWeek       Int
+  aiScore         Int
+  aiCategory      AiCategory
+  aiShouldBreak   Boolean
+  aiReason        String?
+  modelVersion    String      @default("claude-haiku")
+  userAction      UserAction?
+  userActionAt    DateTime?
+  focusSessionId  String?
+  focusMinute     Int?
+  createdAt       DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@index([aiCategory, userAction])
+}
+
+enum AiCategory {
+  critical
+  important
+  normal
+  social
+}
+
+enum UserAction {
+  ALLOWED_THROUGH
+  DISMISSED
+  OVERRODE_AI
+  CONFIRMED_BLOCK
+  MARKED_URGENT
+  MARKED_NOT_URGENT
+}

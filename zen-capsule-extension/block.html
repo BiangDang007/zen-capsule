@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>Zen Capsule · 專注中</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    height: 100%;
+    background: #0e0c0a;
+    color: #e8ddd0;
+    font-family: 'Space Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .container {
+    text-align: center;
+    max-width: 480px;
+    padding: 40px 32px;
+  }
+
+  .shield {
+    font-size: 72px;
+    margin-bottom: 24px;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.95); }
+  }
+
+  .logo {
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    color: #6b5e50;
+    margin-bottom: 32px;
+    text-transform: uppercase;
+  }
+  .logo em { color: #d4884a; font-style: normal; }
+
+  .title {
+    font-size: 22px;
+    color: #c9a96e;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+  }
+
+  .goal-box {
+    background: #161310;
+    border: 1px solid rgba(212,136,74,0.15);
+    padding: 16px 20px;
+    margin: 20px 0;
+    text-align: left;
+  }
+  .goal-label {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: #6b5e50;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .goal-text {
+    font-size: 14px;
+    color: #d4884a;
+    line-height: 1.6;
+  }
+
+  .timer-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .timer-num {
+    font-size: 36px;
+    color: #d4884a;
+    letter-spacing: 0.05em;
+  }
+  .timer-label {
+    font-size: 10px;
+    color: #6b5e50;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .blocked-msg {
+    font-size: 12px;
+    color: #6b5e50;
+    line-height: 1.8;
+    margin-bottom: 32px;
+    letter-spacing: 0.05em;
+  }
+  .blocked-msg strong { color: #8a7060; }
+
+  .intercepted-bar {
+    background: rgba(212,136,74,0.05);
+    border: 1px solid rgba(212,136,74,0.12);
+    padding: 12px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .intercepted-label { font-size: 10px; color: #6b5e50; letter-spacing: 0.15em; }
+  .intercepted-count { font-size: 20px; color: #d4884a; }
+
+  .override-btn {
+    background: none;
+    border: 1px solid rgba(212,136,74,0.2);
+    color: #6b5e50;
+    padding: 10px 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    width: 100%;
+  }
+  .override-btn:hover { border-color: rgba(212,136,74,0.4); color: #c9a96e; }
+
+  .override-confirm {
+    display: none;
+    background: rgba(180,60,60,0.08);
+    border: 1px solid rgba(180,60,60,0.2);
+    padding: 16px;
+    margin-top: 12px;
+    text-align: left;
+  }
+  .override-confirm p {
+    font-size: 11px;
+    color: #8a7060;
+    margin-bottom: 12px;
+    line-height: 1.7;
+  }
+  .override-confirm-btns { display: flex; gap: 8px; }
+  .btn-cancel {
+    flex: 1; padding: 9px; background: none;
+    border: 1px solid rgba(212,136,74,0.15); color: #6b5e50;
+    font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; border-radius: 2px;
+  }
+  .btn-enter {
+    flex: 1; padding: 9px; background: rgba(180,60,60,0.15);
+    border: 1px solid rgba(180,60,60,0.3); color: #e07070;
+    font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; border-radius: 2px;
+  }
+
+  .no-focus-msg { display: none; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+
+  <!-- During focus -->
+  <div id="focusView">
+    <div class="shield">🛡</div>
+    <div class="logo">Zen <em>Capsule</em> · 數位結界</div>
+
+    <div class="title">你正在深潛中</div>
+    <div class="blocked-msg">
+      Gmail 已被封鎖<br>
+      <strong>專注結束後信件會由 AI 整理好給你</strong>
+    </div>
+
+    <div class="goal-box">
+      <div class="goal-label">這次的目標</div>
+      <div class="goal-text" id="goalText">載入中...</div>
+    </div>
+
+    <div class="timer-row">
+      <div>
+        <div class="timer-num" id="timerDisplay">--:--</div>
+        <div class="timer-label">剩餘時間</div>
+      </div>
+    </div>
+
+    <div class="intercepted-bar">
+      <div class="intercepted-label">🛡 已攔截信件</div>
+      <div class="intercepted-count" id="interceptCount">0</div>
+    </div>
+
+    <button class="override-btn" id="overrideBtn">我需要查看緊急郵件</button>
+
+    <div class="override-confirm" id="overrideConfirm">
+      <p>⚠ 確定要中斷專注嗎？<br>進入 Gmail 可能會打斷你的心流狀態。</p>
+      <div class="override-confirm-btns">
+        <button class="btn-cancel" id="cancelOverride">繼續專注</button>
+        <button class="btn-enter" id="confirmOverride">進入 Gmail</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not in focus -->
+  <div id="noFocusView" style="display:none;">
+    <div style="font-size:48px;margin-bottom:16px;">📬</div>
+    <div class="logo">Zen <em>Capsule</em></div>
+    <div class="title" style="margin-bottom:12px;">目前沒有在專注</div>
+    <div class="blocked-msg">點擊下方進入 Gmail</div>
+    <button class="override-btn" id="goToGmail" style="color:#d4884a;border-color:rgba(212,136,74,0.3);">前往 Gmail →</button>
+  </div>
+
+</div>
+
+<script src="block.js"></script>
+</body>
+</html>

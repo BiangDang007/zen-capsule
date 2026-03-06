@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "Zen Capsule · 數位結界",
+  "version": "0.2.0",
+  "description": "專注中自動封鎖社群通知，保護你的深潛時間",
+
+  "permissions": [
+    "notifications",
+    "storage",
+    "tabs",
+    "alarms",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "webNavigation"
+  ],
+
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://messenger.com/*",
+    "https://www.messenger.com/*",
+    "https://instagram.com/*",
+    "https://www.instagram.com/*",
+    "https://facebook.com/*",
+    "https://www.facebook.com/*",
+    "https://web.whatsapp.com/*",
+    "https://twitter.com/*",
+    "https://x.com/*",
+    "http://localhost:3000/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://messenger.com/*",
+        "https://www.messenger.com/*",
+        "https://instagram.com/*",
+        "https://www.instagram.com/*",
+        "https://facebook.com/*",
+        "https://www.facebook.com/*",
+        "https://web.whatsapp.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "declarative_net_request": {
+    "rule_resources": [{
+      "id": "block_gmail",
+      "enabled": false,
+      "path": "rules.json"
+    }]
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+
+  "web_accessible_resources": [{
+    "resources": ["block.html", "block.js"],
+    "matches": ["<all_urls>"]
+  }],
+
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zen Capsule</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: #0F0F1A;
+      color: #E0E0FF;
+      width: 360px;
+      height: 520px;
+      overflow: hidden;
+      border-radius: 12px;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    input, button, select, textarea { -webkit-app-region: no-drag; }
+
+    /* ─── Views ─── */
+    .view { display: none; padding: 24px; height: 100%; }
+    .view.active { display: flex; flex-direction: column; }
+
+    /* ─── Login View ─── */
+    #loginView {
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo { font-size: 56px; margin-bottom: 8px; }
+    .app-title { font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+    .app-subtitle { font-size: 12px; color: #8888AA; margin-bottom: 24px; }
+
+    .input-field {
+      width: 100%;
+      background: #1A1A2E;
+      border: 1px solid #2A2A4A;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #E0E0FF;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-field:focus { border-color: #6C63FF; }
+    .input-field::placeholder { color: #555; }
+
+    .btn-primary {
+      width: 100%;
+      background: #6C63FF;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toggle-link {
+      color: #6C63FF;
+      font-size: 13px;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+
+    .error-msg {
+      color: #FF4757;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* ─── Setup View ─── */
+    #setupView { gap: 16px; }
+
+    .section-label {
+      font-size: 11px;
+      color: #6C63FF;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+    }
+
+    .preset-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      flex: 1;
+      padding: 10px;
+      background: #1A1A2E;
+      border: 1px solid #2A2A4A;
+      border-radius: 10px;
+      color: #8888AA;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .preset-btn.selected {
+      background: rgba(108, 99, 255, 0.15);
+      border-color: #6C63FF;
+      color: #6C63FF;
+    }
+
+    .goal-input {
+      width: 100%;
+      background: #1A1A2E;
+      border: 1px solid #2A2A4A;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #E0E0FF;
+      outline: none;
+      resize: none;
+      height: 64px;
+      font-family: inherit;
+    }
+    .goal-input:focus { border-color: #6C63FF; }
+    .goal-input::placeholder { color: #555; }
+
+    .lockdown-notice {
+      background: #FF475715;
+      border: 1px solid #FF475733;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #FF8A8A;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .user-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-email { font-size: 12px; color: #8888AA; }
+    .btn-logout {
+      font-size: 12px;
+      color: #FF4757;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* ─── Focus View ─── */
+    #focusView {
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .timer-circle {
+      width: 200px;
+      height: 200px;
+      border-radius: 100px;
+      background: #1A1A2E;
+      border: 3px solid #6C63FF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px rgba(108, 99, 255, 0.3);
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(108, 99, 255, 0.2); }
+      50% { box-shadow: 0 0 40px rgba(108, 99, 255, 0.5); }
+    }
+
+    .timer-text {
+      font-size: 42px;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      color: #E0E0FF;
+    }
+
+    .timer-label {
+      font-size: 11px;
+      color: #8888AA;
+    }
+
+    .focus-goal {
+      font-size: 13px;
+      color: #8888AA;
+      text-align: center;
+      max-width: 280px;
+    }
+
+    .lock-badge {
+      background: #FF475722;
+      border: 1px solid #FF475744;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 11px;
+      color: #FF8A8A;
+    }
+
+    .intercept-count {
+      font-size: 12px;
+      color: #6C63FF;
+    }
+
+    /* ─── Complete View ─── */
+    #completeView {
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .complete-emoji { font-size: 56px; }
+    .complete-title { font-size: 22px; font-weight: 600; }
+    .complete-subtitle { font-size: 13px; color: #8888AA; text-align: center; }
+
+    .stat-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+    .stat-card {
+      flex: 1;
+      background: #1A1A2E;
+      border: 1px solid #2A2A4A;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-value { font-size: 20px; font-weight: 700; color: #6C63FF; }
+    .stat-label { font-size: 10px; color: #8888AA; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ LOGIN VIEW ═══ -->
+  <div id="loginView" class="view active">
+    <div class="logo">🧘</div>
+    <div class="app-title">Zen Capsule</div>
+    <div class="app-subtitle">Build your digital barrier</div>
+    <input id="emailInput" class="input-field" type="email" placeholder="Email" />
+    <input id="passwordInput" class="input-field" type="password" placeholder="Password" />
+    <div id="loginError" class="error-msg"></div>
+    <button id="loginBtn" class="btn-primary">Sign In</button>
+    <button id="toggleAuth" class="toggle-link">Don't have an account? Sign Up</button>
+  </div>
+
+  <!-- ═══ SETUP VIEW ═══ -->
+  <div id="setupView" class="view">
+    <div class="user-bar">
+      <span id="userEmail" class="user-email"></span>
+      <button id="logoutBtn" class="btn-logout">Sign Out</button>
+    </div>
+
+    <div class="section-label">Duration</div>
+    <div class="preset-row">
+      <button class="preset-btn" data-min="25">25m</button>
+      <button class="preset-btn selected" data-min="45">45m</button>
+      <button class="preset-btn" data-min="60">60m</button>
+      <button class="preset-btn" data-min="90">90m</button>
+    </div>
+
+    <div class="section-label">Focus Goal</div>
+    <textarea id="goalInput" class="goal-input" placeholder="What will you focus on?"></textarea>
+
+    <div class="lockdown-notice">
+      🔒 LOCKDOWN MODE<br>
+      Once started, distractions are blocked system-wide.<br>
+      Cannot be stopped until timer expires.
+    </div>
+
+    <button id="startBtn" class="btn-primary">🧘 Start Focus — Lock Down</button>
+  </div>
+
+  <!-- ═══ FOCUS VIEW ═══ -->
+  <div id="focusView" class="view">
+    <div class="timer-circle">
+      <div id="timerText" class="timer-text">45:00</div>
+      <div class="timer-label">remaining</div>
+    </div>
+    <div id="focusGoal" class="focus-goal"></div>
+    <div class="lock-badge">🔒 LOCKED — No manual override</div>
+    <div id="interceptCount" class="intercept-count"></div>
+  </div>
+
+  <!-- ═══ COMPLETE VIEW ═══ -->
+  <div id="completeView" class="view">
+    <div class="complete-emoji">🎉</div>
+    <div class="complete-title">Focus Complete!</div>
+    <div id="completeSummary" class="complete-subtitle"></div>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div id="statDuration" class="stat-value">45m</div>
+        <div class="stat-label">Minutes</div>
+      </div>
+      <div class="stat-card">
+        <div id="statBlocked" class="stat-value">0</div>
+        <div class="stat-label">Blocked</div>
+      </div>
+    </div>
+    <button id="doneBtn" class="btn-primary">Start Another Session</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

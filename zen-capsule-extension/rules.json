@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "mail.google.com", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 2, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "messenger.com", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 3, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "instagram.com", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 4, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "facebook.com", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 5, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "web.whatsapp.com", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 6, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "twitter.com", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 7, "priority": 1,
+    "action": { "type": "redirect", "redirect": { "extensionPath": "/block.html" } },
+    "condition": { "urlFilter": "x.com", "resourceTypes": ["main_frame"] }
+  }
+]
