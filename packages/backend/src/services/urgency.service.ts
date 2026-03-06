@@ -1,43 +1,16 @@
 // src/services/urgency.service.ts
 
 import Anthropic from '@anthropic-ai/sdk'
+import type {
+  UrgencyResult,
+  MessageContext,
+  EmailSummaryResult,
+  TaskBreakdownResult,
+} from '@zen-capsule/shared'
+
+export type { UrgencyResult, MessageContext, EmailSummaryResult, TaskBreakdownResult }
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-// ── Types ──────────────────────────────────────────
-export interface UrgencyResult {
-  score: number
-  isUrgent: boolean
-  shouldBreakthrough: boolean
-  reason: string
-  category: 'critical' | 'important' | 'normal' | 'social'
-}
-
-export interface MessageContext {
-  content: string
-  senderName?: string
-  senderContact?: string
-  isWhitelisted: boolean
-  repeatCount?: number
-}
-
-export interface EmailSummaryResult {
-  urgent: { from: string; subject: string; summary: string }[]
-  todo:   { from: string; subject: string; summary: string }[]
-  personal: { from: string; subject: string; summary: string }[]
-  adsCount: number
-}
-
-export interface TaskStep {
-  order: number
-  task: string
-  estimatedMinutes: number
-}
-
-export interface TaskBreakdownResult {
-  steps: TaskStep[]
-  totalMinutes: number
-}
 
 // ════════════════════════════════════════════════════
 // PROMPT 1 — 緊急判斷（每封訊息進來時呼叫）

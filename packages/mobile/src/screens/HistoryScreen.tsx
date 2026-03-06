@@ -17,7 +17,7 @@ export default function HistoryScreen() {
   const fetchHistory = useCallback(async () => {
     try {
       const data = await api.getSessionHistory();
-      setSessions(data);
+      setSessions(data.sessions);
     } catch {
       // Silently handle — could show a toast
     } finally {
@@ -35,9 +35,8 @@ export default function HistoryScreen() {
     fetchHistory();
   };
 
-  const totalMinutes = sessions.reduce(
-    (acc, s) => acc + (s.durationMinutes || 0),
-    0,
+  const totalMinutes = Math.round(
+    sessions.reduce((acc, s) => acc + (s.durationSeconds ?? 0), 0) / 60,
   );
 
   const formatDate = (iso: string) => {
@@ -103,8 +102,8 @@ export default function HistoryScreen() {
                 {formatDate(item.startedAt)}
               </Text>
               <Text style={styles.sessionDuration}>
-                {item.durationMinutes
-                  ? `${item.durationMinutes} min`
+                {item.durationSeconds
+                  ? `${Math.round(item.durationSeconds / 60)} min`
                   : 'In progress'}
               </Text>
             </View>

@@ -81,7 +81,7 @@ export default function FocusScreen() {
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
     try {
-      const session = await api.startSession(selectedMinutes);
+      const { session } = await api.startSession(`Focus ${selectedMinutes}min`);
       setSessionId(session.id);
     } catch {
       // Offline mode: still run timer locally

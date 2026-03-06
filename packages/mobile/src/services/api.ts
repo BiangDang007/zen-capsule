@@ -1,5 +1,26 @@
 import { API_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type {
+  AuthResponse,
+  FocusSession,
+  FocusHistoryResponse,
+  UrgencyResult,
+  AnalyseResponse,
+  EmailSummaryResult,
+  TaskBreakdownResult,
+  WhitelistEntry,
+  SyncState,
+} from '@zen-capsule/shared';
+
+export type {
+  AuthResponse,
+  FocusSession,
+  UrgencyResult,
+  EmailSummaryResult,
+  TaskBreakdownResult,
+  WhitelistEntry,
+  SyncState,
+};
 
 const TOKEN_KEY = 'zen_capsule_token';
 
@@ -41,12 +62,6 @@ async function request<T>(
 }
 
 // ─── Auth ────────────────────────────────────────────
-export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: { id: string; email: string };
-}
-
 export function register(email: string, password: string) {
   return request<AuthResponse>('/auth/register', {
     method: 'POST',
@@ -62,89 +77,63 @@ export function login(email: string, password: string) {
 }
 
 // ─── Focus Session ───────────────────────────────────
-export interface FocusSession {
-  id: string;
-  startedAt: string;
-  endedAt?: string;
-  durationMinutes?: number;
-}
-
-export function startSession(durationMinutes: number) {
-  return request<FocusSession>('/sessions/start', {
+export function startSession(goal: string) {
+  return request<{ session: FocusSession }>('/focus/start', {
     method: 'POST',
-    body: JSON.stringify({ durationMinutes }),
+    body: JSON.stringify({ goal }),
   });
 }
 
 export function endSession(sessionId: string) {
-  return request<FocusSession>(`/sessions/${sessionId}/end`, {
+  return request<{ session: FocusSession }>('/focus/end', {
     method: 'POST',
+    body: JSON.stringify({ sessionId }),
   });
 }
 
-export function getSessionHistory() {
-  return request<FocusSession[]>('/sessions/history');
+export function getSessionHistory(limit = 10, offset = 0) {
+  return request<FocusHistoryResponse>(`/focus/history?limit=${limit}&offset=${offset}`);
 }
 
 // ─── AI ──────────────────────────────────────────────
-export interface UrgencyResult {
-  isUrgent: boolean;
-  score: number;
-  reason: string;
-}
-
-export function analyseMessage(message: string, sender?: string) {
-  return request<UrgencyResult>('/ai/analyse', {
+export function analyseMessage(content: string, senderName?: string, senderContact?: string) {
+  return request<AnalyseResponse>('/ai/analyse', {
     method: 'POST',
-    body: JSON.stringify({ message, sender }),
+    body: JSON.stringify({ content, senderName, senderContact }),
   });
 }
 
-export interface EmailSummary {
-  summaries: Array<{ subject: string; summary: string; urgent: boolean }>;
-}
-
-export function summariseEmails(emails: Array<{ subject: string; body: string }>) {
-  return request<EmailSummary>('/ai/summarise-emails', {
+export function summariseEmails(emails: Array<{ from: string; subject: string; preview?: string }>) {
+  return request<{ summary: EmailSummaryResult }>('/ai/summarise-emails', {
     method: 'POST',
     body: JSON.stringify({ emails }),
   });
 }
 
-export interface TaskBreakdown {
-  subtasks: Array<{ title: string; estimatedMinutes: number }>;
-}
-
-export function breakdownTask(task: string) {
-  return request<TaskBreakdown>('/ai/breakdown-task', {
+export function breakdownTask(goal: string, durationMinutes = 25) {
+  return request<{ breakdown: TaskBreakdownResult }>('/ai/breakdown-task', {
     method: 'POST',
-    body: JSON.stringify({ task }),
+    body: JSON.stringify({ goal, durationMinutes }),
   });
 }
 
 // ─── Sync ────────────────────────────────────────────
 export function getSyncState() {
-  return request<Record<string, unknown>>('/sync/state');
+  return request<SyncState>('/sync/state');
 }
 
 // ─── Whitelist ───────────────────────────────────────
-export interface WhitelistEntry {
-  id: string;
-  sender: string;
-  reason?: string;
-}
-
 export function getWhitelist() {
-  return request<WhitelistEntry[]>('/whitelist');
+  return request<{ whitelist: WhitelistEntry[] }>('/ai/whitelist');
 }
 
-export function addWhitelist(sender: string, reason?: string) {
-  return request<WhitelistEntry>('/whitelist', {
+export function addWhitelist(name: string, contact: string, priority = 1) {
+  return request<{ entry: WhitelistEntry }>('/ai/whitelist', {
     method: 'POST',
-    body: JSON.stringify({ sender, reason }),
+    body: JSON.stringify({ name, contact, priority }),
   });
 }
 
 export function removeWhitelist(id: string) {
-  return request<void>(`/whitelist/${id}`, { method: 'DELETE' });
+  return request<{ ok: true }>(`/ai/whitelist/${id}`, { method: 'DELETE' });
 }

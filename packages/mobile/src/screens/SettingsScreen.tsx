@@ -20,13 +20,13 @@ export default function SettingsScreen() {
   const [newSender, setNewSender] = useState('');
 
   useEffect(() => {
-    api.getWhitelist().then(setWhitelist).catch(() => {});
+    api.getWhitelist().then(res => setWhitelist(res.whitelist)).catch(() => {});
   }, []);
 
   const handleAddWhitelist = async () => {
     if (!newSender.trim()) return;
     try {
-      const entry = await api.addWhitelist(newSender.trim());
+      const { entry } = await api.addWhitelist(newSender.trim(), newSender.trim());
       setWhitelist(prev => [...prev, entry]);
       setNewSender('');
     } catch (err: any) {
@@ -113,7 +113,7 @@ export default function SettingsScreen() {
         </View>
         {whitelist.map(entry => (
           <View key={entry.id} style={styles.whitelistRow}>
-            <Text style={styles.whitelistSender}>{entry.sender}</Text>
+            <Text style={styles.whitelistSender}>{entry.name} ({entry.contact})</Text>
             <TouchableOpacity
               onPress={() => handleRemoveWhitelist(entry.id)}>
               <Text style={styles.removeText}>Remove</Text>

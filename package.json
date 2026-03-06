@@ -1,0 +1,16 @@
+{
+  "name": "zen-capsule",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm -w packages/backend run dev",
+    "build:backend": "npm -w packages/backend run build",
+    "build:shared": "npm -w packages/shared run build",
+    "dev:desktop": "npm -w packages/desktop run dev",
+    "db:migrate": "npm -w packages/backend run db:migrate",
+    "db:generate": "npm -w packages/backend run db:generate",
+    "db:studio": "npm -w packages/backend run db:studio"
+  }
+}
