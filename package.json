@@ -11,6 +11,8 @@
     "dev:desktop": "npm -w packages/desktop run dev",
     "db:migrate": "npm -w packages/backend run db:migrate",
     "db:generate": "npm -w packages/backend run db:generate",
-    "db:studio": "npm -w packages/backend run db:studio"
+    "db:studio": "npm -w packages/backend run db:studio",
+    "build:extension": "npm -w packages/extension run build",
+    "dev:extension": "npm -w packages/extension run dev"
   }
 }

@@ -1,3 +1,5 @@
 export * from './enums.js'
 export * from './api.js'
 export { API_PREFIX, ENDPOINTS } from './endpoints.js'
+export { createApiClient } from './client.js'
+export type { ApiClient, ApiClientConfig } from './client.js'

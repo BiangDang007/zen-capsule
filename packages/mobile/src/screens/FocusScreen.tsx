@@ -8,7 +8,7 @@ import {
   Vibration,
   Alert,
 } from 'react-native';
-import * as api from '../services/api';
+import { api } from '../services/api';
 
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
 
@@ -72,7 +72,7 @@ export default function FocusScreen() {
       [{ text: 'OK' }],
     );
     if (sessionId) {
-      api.endSession(sessionId).catch(() => {});
+      api.focus.end({ sessionId }).catch(() => {});
       setSessionId(null);
     }
   }, [selectedMinutes, sessionId]);
@@ -81,7 +81,7 @@ export default function FocusScreen() {
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
     try {
-      const { session } = await api.startSession(`Focus ${selectedMinutes}min`);
+      const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
       setSessionId(session.id);
     } catch {
       // Offline mode: still run timer locally
@@ -98,7 +98,7 @@ export default function FocusScreen() {
           setIsRunning(false);
           if (intervalRef.current) clearInterval(intervalRef.current);
           if (sessionId) {
-            api.endSession(sessionId).catch(() => {});
+            api.focus.end({ sessionId }).catch(() => {});
             setSessionId(null);
           }
         },

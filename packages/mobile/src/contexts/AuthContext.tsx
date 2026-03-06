@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as api from '../services/api';
+import { api, saveToken, clearToken } from '../services/api';
 
 interface User {
   id: string;
@@ -36,23 +36,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const res = await api.login(email, password);
-    await api.saveToken(res.accessToken);
+    const res = await api.auth.login({ email, password });
+    await saveToken(res.accessToken);
     await AsyncStorage.setItem('zen_capsule_refresh', res.refreshToken);
     await AsyncStorage.setItem('zen_capsule_user', JSON.stringify(res.user));
     setUser(res.user);
   };
 
   const signUp = async (email: string, password: string) => {
-    const res = await api.register(email, password);
-    await api.saveToken(res.accessToken);
+    const res = await api.auth.register({ email, password });
+    await saveToken(res.accessToken);
     await AsyncStorage.setItem('zen_capsule_refresh', res.refreshToken);
     await AsyncStorage.setItem('zen_capsule_user', JSON.stringify(res.user));
     setUser(res.user);
   };
 
   const signOut = async () => {
-    await api.clearToken();
+    await clearToken();
     await AsyncStorage.removeItem('zen_capsule_user');
     setUser(null);
   };

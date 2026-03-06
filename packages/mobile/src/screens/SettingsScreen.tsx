@@ -10,23 +10,24 @@ import {
   TextInput,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import * as api from '../services/api';
+import { api } from '../services/api';
+import type { WhitelistEntry } from '@zen-capsule/shared';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [urgentOnlyMode, setUrgentOnlyMode] = useState(true);
-  const [whitelist, setWhitelist] = useState<api.WhitelistEntry[]>([]);
+  const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
   const [newSender, setNewSender] = useState('');
 
   useEffect(() => {
-    api.getWhitelist().then(res => setWhitelist(res.whitelist)).catch(() => {});
+    api.ai.getWhitelist().then(res => setWhitelist(res.whitelist)).catch(() => {});
   }, []);
 
   const handleAddWhitelist = async () => {
     if (!newSender.trim()) return;
     try {
-      const { entry } = await api.addWhitelist(newSender.trim(), newSender.trim());
+      const { entry } = await api.ai.addWhitelist({ name: newSender.trim(), contact: newSender.trim() });
       setWhitelist(prev => [...prev, entry]);
       setNewSender('');
     } catch (err: any) {
@@ -36,7 +37,7 @@ export default function SettingsScreen() {
 
   const handleRemoveWhitelist = async (id: string) => {
     try {
-      await api.removeWhitelist(id);
+      await api.ai.removeWhitelist(id);
       setWhitelist(prev => prev.filter(e => e.id !== id));
     } catch (err: any) {
       Alert.alert('Error', err.message);

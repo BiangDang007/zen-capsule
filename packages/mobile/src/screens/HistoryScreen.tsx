@@ -7,16 +7,17 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import * as api from '../services/api';
+import { api } from '../services/api';
+import type { FocusSession } from '@zen-capsule/shared';
 
 export default function HistoryScreen() {
-  const [sessions, setSessions] = useState<api.FocusSession[]>([]);
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     try {
-      const data = await api.getSessionHistory();
+      const data = await api.focus.history();
       setSessions(data.sessions);
     } catch {
       // Silently handle — could show a toast
