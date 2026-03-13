@@ -2,15 +2,18 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { analyseUrgency, summariseEmails, breakdownTask } from '../services/urgency.service.js'
+import { analyseUrgency, summariseEmails } from '../services/urgency.service.js'
+import { checkAndIncrement, LimitExceededError } from '../services/usage.service.js'
 
 const analyseSchema = z.object({
   content: z.string().min(1).max(2000),
-  senderName: z.string().optional(),
-  senderContact: z.string().optional(),
-  subject: z.string().optional(),
-  preview: z.string().optional(),
-  repeatCount: z.number().optional(),
+  senderName: z.string().max(200).optional(),
+  senderContact: z.string().max(500).optional(),
+  subject: z.string().max(500).optional(),
+  preview: z.string().max(2000).optional(),
+  repeatCount: z.number().int().min(0).max(999).optional(),
+  appName: z.string().max(100).optional(),      // "Shopee", "LINE" — from Android
+  packageName: z.string().max(200).optional(),  // "com.shopee.tw"  — from Android
 })
 
 const feedbackSchema = z.object({
@@ -20,32 +23,55 @@ const feedbackSchema = z.object({
 
 const emailSummarySchema = z.object({
   emails: z.array(z.object({
-    from: z.string(),
-    subject: z.string(),
-    preview: z.string().optional().default(''),
-  }))
-})
-
-const taskBreakdownSchema = z.object({
-  goal: z.string().min(1).max(500),
-  durationMinutes: z.number().min(1).max(300).default(25),
+    from: z.string().max(200),
+    subject: z.string().max(500),
+    preview: z.string().max(2000).optional().default(''),
+  })).max(50),
 })
 
 const whitelistSchema = z.object({
-  name: z.string().min(1),
-  contact: z.string().min(1),
-  priority: z.number().min(1).max(10).default(1),
+  name: z.string().min(1).max(200),
+  contact: z.string().min(1).max(500),
+  priority: z.number().int().min(1).max(10).default(1),
 })
+
+/** Verify the export admin key from Authorization header (not query param!) */
+function verifyExportKey(req: any, reply: any): boolean {
+  const authHeader = req.headers['x-export-key'] as string | undefined
+  if (!authHeader || authHeader !== process.env.EXPORT_KEY) {
+    reply.status(403).send({ error: 'Forbidden' })
+    return false
+  }
+  return true
+}
+
+function handleUsageError(err: unknown, reply: any) {
+  if (err instanceof LimitExceededError) {
+    return reply.status(429).send({
+      error: 'Daily AI limit reached',
+      detail: err.message,
+      retryAfter: 'tomorrow',
+    })
+  }
+  throw err
+}
 
 export async function aiRoutes(app: FastifyInstance) {
   const auth = { onRequest: [app.authenticate] }
 
   // ── POST /ai/analyse ────────────────────────────────
   // Core urgency check — automatically logs to BehaviorLog
-  app.post('/ai/analyse', auth, async (req, reply) => {
+  // Rate: 30/min per user (Android fires on every notification)
+  app.post('/ai/analyse', { ...auth, config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
     const userId = (req.user as { sub: string }).sub
     const body = analyseSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
+
+    try {
+      await checkAndIncrement(userId, 'analyses')
+    } catch (err) {
+      return handleUsageError(err, reply)
+    }
 
     const whitelisted = body.data.senderContact
       ? await prisma.whitelist.findFirst({ where: { userId, contact: body.data.senderContact } })
@@ -78,6 +104,8 @@ export async function aiRoutes(app: FastifyInstance) {
         senderName: body.data.senderName,
         subject: body.data.subject || body.data.content.slice(0, 100),
         preview: body.data.preview || body.data.content.slice(0, 200),
+        appName: body.data.appName,
+        packageName: body.data.packageName,
         isWhitelisted: !!whitelisted,
         repeatCount: body.data.repeatCount ?? 1,
         hourOfDay: now.getHours(),
@@ -123,18 +151,19 @@ export async function aiRoutes(app: FastifyInstance) {
   // Only returns logs where userAction is recorded (ground truth exists)
   app.get('/ai/export', auth, async (req, reply) => {
     const userId = (req.user as { sub: string }).sub
-    const query = req.query as { format?: string; minLogs?: string; adminKey?: string }
 
-    // Simple admin protection
-    if (query.adminKey !== process.env.EXPORT_KEY) {
-      return reply.status(403).send({ error: 'Forbidden' })
-    }
+    // Admin key via header (never in URL/query params for security)
+    if (!verifyExportKey(req, reply)) return
+
+    const query = req.query as { limit?: string }
+    const exportLimit = Math.min(Math.max(parseInt(query.limit ?? '5000') || 5000, 1), 10000) // cap at 10k rows
 
     const logs = await prisma.behaviorLog.findMany({
       where: {
         userId,
         userAction: { not: null }, // only labelled data
       },
+      take: exportLimit,
       select: {
         // Input features
         senderEmail: true,
@@ -207,22 +236,30 @@ export async function aiRoutes(app: FastifyInstance) {
   // CSV format for Excel / pandas
   app.get('/ai/export/csv', auth, async (req, reply) => {
     const userId = (req.user as { sub: string }).sub
-    const query = req.query as { adminKey?: string }
-    if (query.adminKey !== process.env.EXPORT_KEY) return reply.status(403).send({ error: 'Forbidden' })
+
+    // Admin key via header (never in URL/query params for security)
+    if (!verifyExportKey(req, reply)) return
 
     const logs = await prisma.behaviorLog.findMany({
       where: { userId, userAction: { not: null } },
       orderBy: { createdAt: 'desc' },
     })
 
+    // CSV injection defence: prefix cells starting with =, +, -, @, \t, \r with a single quote
+    const csvSafe = (val: string): string => {
+      const escaped = val.replace(/"/g, '""')
+      if (/^[=+\-@\t\r]/.test(escaped)) return `"'${escaped}"`
+      return `"${escaped}"`
+    }
+
     const header = 'subject,preview,senderName,isWhitelisted,repeatCount,hourOfDay,dayOfWeek,aiScore,aiCategory,aiShouldBreak,userAction,isUrgent,aiWasCorrect,createdAt'
     const rows = logs.map(l => {
       const isUrgent = ['ALLOWED_THROUGH','MARKED_URGENT','OVERRODE_AI'].includes(l.userAction!)
       const aiWasCorrect = l.aiShouldBreak === ['ALLOWED_THROUGH','MARKED_URGENT'].includes(l.userAction!)
       return [
-        `"${l.subject.replace(/"/g,'""')}"`,
-        `"${l.preview.slice(0,100).replace(/"/g,'""')}"`,
-        `"${(l.senderName||'').replace(/"/g,'""')}"`,
+        csvSafe(l.subject),
+        csvSafe(l.preview.slice(0, 100)),
+        csvSafe(l.senderName || ''),
         l.isWhitelisted,
         l.repeatCount,
         l.hourOfDay,
@@ -243,19 +280,20 @@ export async function aiRoutes(app: FastifyInstance) {
   })
 
   // ── POST /ai/summarise-emails ───────────────────────
-  app.post('/ai/summarise-emails', auth, async (req, reply) => {
+  // Rate: 5/min per user (Sonnet is expensive)
+  app.post('/ai/summarise-emails', { ...auth, config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
     const body = emailSummarySchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
+
+    try {
+      await checkAndIncrement(userId, 'summaries')
+    } catch (err) {
+      return handleUsageError(err, reply)
+    }
+
     const summary = await summariseEmails(body.data.emails.map(e => ({ from: e.from, subject: e.subject, preview: e.preview })))
     return reply.send({ summary })
-  })
-
-  // ── POST /ai/breakdown-task ─────────────────────────
-  app.post('/ai/breakdown-task', auth, async (req, reply) => {
-    const body = taskBreakdownSchema.safeParse(req.body)
-    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
-    const breakdown = await breakdownTask(body.data.goal, body.data.durationMinutes)
-    return reply.send({ breakdown })
   })
 
   // ── Whitelist CRUD ──────────────────────────────────

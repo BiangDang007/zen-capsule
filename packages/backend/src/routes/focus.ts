@@ -71,11 +71,15 @@ export async function focusRoutes(app: FastifyInstance) {
     const userId = (req.user as { sub: string }).sub
     const { limit = '10', offset = '0' } = req.query as Record<string, string>
 
+    // Clamp pagination to prevent DoS via huge queries
+    const take = Math.min(Math.max(parseInt(limit) || 10, 1), 100)    // 1–100
+    const skip = Math.max(parseInt(offset) || 0, 0)                   // >= 0
+
     const sessions = await prisma.focusSession.findMany({
       where: { userId },
       orderBy: { startedAt: 'desc' },
-      take: parseInt(limit),
-      skip: parseInt(offset),
+      take,
+      skip,
     })
 
     const total = await prisma.focusSession.count({ where: { userId } })
@@ -96,6 +100,61 @@ export async function focusRoutes(app: FastifyInstance) {
     })
 
     return reply.status(201).send({ thought })
+  })
+
+  // ── GET /focus/session-report ───────────────────────
+  // Break-time summary: all intercepted notifications grouped by AI category
+  app.get('/focus/session-report', auth, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const { sessionId } = req.query as { sessionId?: string }
+
+    const session = sessionId
+      ? await prisma.focusSession.findFirst({ where: { id: sessionId, userId } })
+      : await prisma.focusSession.findFirst({
+          where: { userId, endedAt: { not: null } },
+          orderBy: { endedAt: 'desc' },
+        })
+
+    if (!session) return reply.status(404).send({ error: 'No session found' })
+
+    const logs = await prisma.behaviorLog.findMany({
+      where: { userId, focusSessionId: session.id },
+      select: {
+        id: true, appName: true, packageName: true,
+        senderName: true, subject: true, preview: true,
+        aiCategory: true, aiScore: true, aiShouldBreak: true, createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    const byCategory = (cat: string) =>
+      logs.filter(l => l.aiCategory === cat).map(l => ({
+        ...l, createdAt: l.createdAt.toISOString(),
+      }))
+
+    const adsLogs = logs.filter(l => l.aiCategory === 'ads')
+    const appCounts: Record<string, number> = {}
+    for (const l of adsLogs) {
+      const name = l.appName ?? l.packageName ?? 'Unknown'
+      appCounts[name] = (appCounts[name] ?? 0) + 1
+    }
+    const topApps = Object.entries(appCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => `${name} x${count}`)
+
+    return reply.send({
+      sessionId: session.id,
+      sessionGoal: session.goal,
+      startedAt: session.startedAt.toISOString(),
+      durationMinutes: session.durationSeconds ? Math.round(session.durationSeconds / 60) : 0,
+      totalIntercepted: logs.length,
+      critical: byCategory('critical'),
+      important: byCategory('important'),
+      normal: byCategory('normal'),
+      social: byCategory('social'),
+      ads: { count: adsLogs.length, topApps },
+    })
   })
 
   // ── GET /focus/thoughts ─────────────────────────────

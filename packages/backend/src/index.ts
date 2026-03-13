@@ -15,6 +15,20 @@ import { syncRoutes } from './routes/sync.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+// ── ENV validation (fail fast) ────────────────────────
+{
+  const required = ['JWT_SECRET', 'ANTHROPIC_API_KEY', 'DATABASE_URL']
+  const missing = required.filter(k => !process.env[k])
+  if (missing.length) {
+    console.error(`❌ Missing required env vars: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+  if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET === 'dev-secret-change-me') {
+    console.error('❌ JWT_SECRET must not use the default dev value in production')
+    process.exit(1)
+  }
+}
+
 const app = Fastify({
   logger: {
     transport:
@@ -46,15 +60,53 @@ await app.register(jwt, {
 await app.register(rateLimit, {
   max: 100,
   timeWindow: '1 minute',
+  // Per-route overrides applied via config.rateLimit in route handlers
+  keyGenerator: (req) => (req.user as { sub?: string } | undefined)?.sub ?? req.ip,
 })
 
 await app.register(authMiddleware)
+
+// ── Security headers ─────────────────────────────────
+app.addHook('onSend', async (_request, reply) => {
+  reply.header('X-Content-Type-Options', 'nosniff')
+  reply.header('X-Frame-Options', 'DENY')
+  reply.header('X-XSS-Protection', '0')  // modern browsers use CSP instead
+  if (process.env.NODE_ENV === 'production') {
+    reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+})
 
 // ── Routes ────────────────────────────────────────────
 await app.register(authRoutes, { prefix: '/api/v1' })
 await app.register(focusRoutes, { prefix: '/api/v1' })
 await app.register(aiRoutes, { prefix: '/api/v1' })
 await app.register(syncRoutes, { prefix: '/api/v1' })
+
+// ── Global error handler (hide internals in production) ──
+app.setErrorHandler((error, request, reply) => {
+  const statusCode = error.statusCode ?? 500
+
+  // Always log full error server-side
+  request.log.error(error)
+
+  if (statusCode >= 500) {
+    // Never leak stack traces or internal errors to client
+    return reply.status(statusCode).send({
+      error: process.env.NODE_ENV === 'production'
+        ? 'Internal Server Error'
+        : error.message,
+      statusCode,
+      // Only include stack in dev
+      ...(process.env.NODE_ENV !== 'production' && { stack: error.stack }),
+    })
+  }
+
+  // 4xx errors — safe to return message
+  return reply.status(statusCode).send({
+    error: error.message,
+    statusCode,
+  })
+})
 
 // ── Health check ──────────────────────────────────────
 app.get('/health', async () => ({
