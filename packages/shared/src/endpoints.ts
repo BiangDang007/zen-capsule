@@ -13,6 +13,7 @@ export const ENDPOINTS = {
   FOCUS_HISTORY: '/focus/history',
   FOCUS_THOUGHT: '/focus/thought',
   FOCUS_THOUGHTS: '/focus/thoughts',
+  FOCUS_SESSION_REPORT: '/focus/session-report',
 
   // AI
   AI_ANALYSE: '/ai/analyse',

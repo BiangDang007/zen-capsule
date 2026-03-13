@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -16,33 +17,34 @@ import java.net.URL
 /**
  * Zen Capsule — Android Notification Listener
  *
- * This is the CORE of Android's content-level filtering.
- * It can read ALL incoming notifications from ANY app,
- * extract the text content, and decide whether to:
- *   1. Block it (store for later summary)
- *   2. Let it through (urgent message breakthrough)
+ * Intercepts ALL incoming notifications from ANY app, sends them to the
+ * backend AI for urgency analysis, and decides:
+ *   1. Block  → store for break-time summary
+ *   2. Through → show a breakthrough notification
  *
- * This is something iOS/macOS CANNOT do.
+ * This is only possible on Android (NotificationListenerService).
  */
 class ZenNotificationListener : NotificationListenerService() {
 
     companion object {
         private const val TAG = "ZenNotificationListener"
         private const val CHANNEL_ID = "zen_breakthrough"
-        private const val API_BASE = "http://10.0.2.2:3000/api/v1" // Emulator → localhost
+        private const val API_BASE = "http://10.0.2.2:3001/api/v1" // Emulator → localhost
 
-        // Apps to monitor (package names)
-        val MONITORED_APPS = setOf(
-            "com.facebook.orca",          // Messenger
-            "com.facebook.katana",        // Facebook
-            "com.instagram.android",      // Instagram
-            "com.zhiliaoapp.musically",   // TikTok
-            "com.instagram.barcelona",    // Threads
-            "com.google.android.gm",      // Gmail
-            "com.whatsapp",               // WhatsApp
-            "com.twitter.android",        // Twitter/X
-            "jp.naver.line.android",      // LINE
-            "org.telegram.messenger",     // Telegram
+        // System / own packages that must never be intercepted
+        private val SKIP_PACKAGES = setOf(
+            "com.zencapsuleapp",          // ourselves
+            "android",
+            "com.android.systemui",
+            "com.android.system",
+            "com.google.android.googlequicksearchbox",
+        )
+
+        // Package prefix patterns to skip (system internals)
+        private val SKIP_PREFIXES = listOf(
+            "com.android.",
+            "com.google.android.gms",
+            "com.google.android.gsf",
         )
 
         // Urgent keywords (local pre-check, no API needed)
@@ -53,12 +55,10 @@ class ZenNotificationListener : NotificationListenerService() {
             "critical", "outage", "incident"
         )
 
-        // State
+        // State shared with ZenNotificationModule (React Native bridge)
         var isFocusing = false
         var authToken: String? = null
         var interceptedNotifications = mutableListOf<InterceptedNotification>()
-
-        // Callback to React Native
         var onNotificationIntercepted: ((InterceptedNotification) -> Unit)? = null
         var onBreakthroughTriggered: ((InterceptedNotification) -> Unit)? = null
     }
@@ -77,27 +77,29 @@ class ZenNotificationListener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        Log.d(TAG, "ZenNotificationListener created")
+        Log.d(TAG, "ZenNotificationListener created — monitoring ALL apps")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        // Only process during focus mode
         if (!isFocusing) return
 
         val packageName = sbn.packageName
 
-        // Only monitor specific apps
-        if (packageName !in MONITORED_APPS) return
+        // Skip system and self notifications
+        if (packageName in SKIP_PACKAGES) return
+        if (SKIP_PREFIXES.any { packageName.startsWith(it) }) return
 
-        // Extract notification content
+        // Extract content
         val extras = sbn.notification.extras
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        val appName = getAppName(packageName)
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim() ?: ""
+        val text  = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()  ?: ""
 
+        // Skip empty / silent notifications
         if (title.isEmpty() && text.isEmpty()) return
 
-        Log.d(TAG, "Intercepted from $appName: $title — $text")
+        val appName = resolveAppName(packageName)
+
+        Log.d(TAG, "Intercepted [$appName] $title — $text")
 
         val notification = InterceptedNotification(
             packageName = packageName,
@@ -107,68 +109,54 @@ class ZenNotificationListener : NotificationListenerService() {
             timestamp = System.currentTimeMillis()
         )
 
-        // Cancel the original notification (block it!)
+        // Block the original immediately
         cancelNotification(sbn.key)
 
-        // Check urgency
         Thread {
-            val urgencyResult = checkUrgency(title, text, appName)
+            val urgencyResult = checkUrgency(title, text, appName, packageName)
 
-            val updatedNotification = notification.copy(
+            val updated = notification.copy(
                 isUrgent = urgencyResult.isUrgent,
                 urgencyScore = urgencyResult.score,
                 urgencyReason = urgencyResult.reason
             )
 
-            // Store for later summary
             synchronized(interceptedNotifications) {
-                interceptedNotifications.add(updatedNotification)
-                if (interceptedNotifications.size > 100) {
+                interceptedNotifications.add(updated)
+                if (interceptedNotifications.size > 200) {
                     interceptedNotifications.removeAt(0)
                 }
             }
 
-            // Notify React Native
-            onNotificationIntercepted?.invoke(updatedNotification)
+            onNotificationIntercepted?.invoke(updated)
 
             if (urgencyResult.isUrgent) {
-                // BREAKTHROUGH! Show our own notification
-                showBreakthroughNotification(updatedNotification)
-                onBreakthroughTriggered?.invoke(updatedNotification)
-                Log.d(TAG, "🚨 BREAKTHROUGH: $appName — $title (score: ${urgencyResult.score})")
+                showBreakthroughNotification(updated)
+                onBreakthroughTriggered?.invoke(updated)
+                Log.d(TAG, "🚨 BREAKTHROUGH [$appName] ${urgencyResult.score}pt — $title")
             } else {
-                Log.d(TAG, "🛡 Blocked: $appName — $title (score: ${urgencyResult.score})")
+                Log.d(TAG, "🛡 Blocked [$appName] ${urgencyResult.score}pt — $title")
             }
         }.start()
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        // No action needed
-    }
+    override fun onNotificationRemoved(sbn: StatusBarNotification) { /* no-op */ }
 
-    // ─── Urgency Check (2-phase: local keywords → AI API) ────
+    // ── Urgency Check (2-phase: local keyword → AI) ───────────────────────────
 
-    data class UrgencyResult(
-        val isUrgent: Boolean,
-        val score: Int,
-        val reason: String
-    )
+    data class UrgencyResult(val isUrgent: Boolean, val score: Int, val reason: String)
 
-    private fun checkUrgency(title: String, text: String, appName: String): UrgencyResult {
+    private fun checkUrgency(title: String, text: String, appName: String, packageName: String): UrgencyResult {
         val combined = "$title $text".lowercase()
 
-        // Phase 1: Local keyword check (instant, no network)
-        for (keyword in URGENT_KEYWORDS) {
-            if (combined.contains(keyword.lowercase())) {
-                return UrgencyResult(
-                    isUrgent = true,
-                    score = 90,
-                    reason = "Keyword match: $keyword"
-                )
+        // Phase 1: instant keyword check
+        for (kw in URGENT_KEYWORDS) {
+            if (combined.contains(kw.lowercase())) {
+                return UrgencyResult(true, 90, "Keyword match: $kw")
             }
         }
 
-        // Phase 2: AI analysis via Claude API
+        // Phase 2: Claude AI
         val token = authToken ?: return UrgencyResult(false, 0, "No auth token")
 
         return try {
@@ -182,41 +170,44 @@ class ZenNotificationListener : NotificationListenerService() {
             conn.doOutput = true
 
             val body = JSONObject().apply {
-                put("message", "$title: $text")
-                put("sender", appName)
+                put("content", if (title.isNotEmpty()) "$title: $text" else text)
+                put("senderName", appName)
+                put("subject", title)
+                put("preview", text)
+                put("appName", appName)
+                put("packageName", packageName)
             }
 
             conn.outputStream.bufferedWriter().use { it.write(body.toString()) }
 
             val response = conn.inputStream.bufferedReader().readText()
             val json = JSONObject(response)
+            val result = json.getJSONObject("result")
 
             UrgencyResult(
-                isUrgent = json.optBoolean("shouldBreakthrough", false),
-                score = json.optInt("score", 0),
-                reason = json.optString("reason", "AI analysis")
+                isUrgent = result.optBoolean("shouldBreakthrough", false),
+                score    = result.optInt("score", 0),
+                reason   = result.optString("reason", "AI analysis")
             )
         } catch (e: Exception) {
             Log.w(TAG, "AI analysis failed: ${e.message}")
-            UrgencyResult(false, 0, "AI unavailable: ${e.message}")
+            UrgencyResult(false, 0, "AI unavailable")
         }
     }
 
-    // ─── Breakthrough Notification ───────────────────────
+    // ── Breakthrough Notification ──────────────────────────────────────────────
 
     private fun showBreakthroughNotification(notif: InterceptedNotification) {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val n = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("⚡ Urgent: ${notif.appName}")
-            .setContentText("${notif.title}: ${notif.text}")
+            .setContentTitle("⚡ ${notif.appName}")
+            .setContentText(if (notif.title.isNotEmpty()) "${notif.title}: ${notif.text}" else notif.text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .build()
-
-        manager.notify(notif.timestamp.toInt(), notification)
+        manager.notify(notif.timestamp.toInt(), n)
     }
 
     private fun createNotificationChannel() {
@@ -225,29 +216,21 @@ class ZenNotificationListener : NotificationListenerService() {
                 CHANNEL_ID,
                 "Zen Capsule Breakthrough",
                 NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Urgent messages that break through focus mode"
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+            ).apply { description = "Urgent messages that break through focus mode" }
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
         }
     }
 
-    // ─── Helpers ─────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun getAppName(packageName: String): String {
-        return when (packageName) {
-            "com.facebook.orca" -> "Messenger"
-            "com.facebook.katana" -> "Facebook"
-            "com.instagram.android" -> "Instagram"
-            "com.zhiliaoapp.musically" -> "TikTok"
-            "com.instagram.barcelona" -> "Threads"
-            "com.google.android.gm" -> "Gmail"
-            "com.whatsapp" -> "WhatsApp"
-            "com.twitter.android" -> "Twitter/X"
-            "jp.naver.line.android" -> "LINE"
-            "org.telegram.messenger" -> "Telegram"
-            else -> packageName
+    private fun resolveAppName(packageName: String): String {
+        return try {
+            val info = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(info).toString()
+        } catch (e: PackageManager.NameNotFoundException) {
+            // Fallback: strip prefix and capitalise
+            packageName.substringAfterLast('.').replaceFirstChar { it.uppercase() }
         }
     }
 }

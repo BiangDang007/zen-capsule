@@ -8,6 +8,7 @@ import type {
   TaskBreakdownRequest, TaskBreakdownResult,
   WhitelistEntry, AddWhitelistRequest,
   RegisterDeviceRequest, Device, SyncState,
+  SessionReport,
 } from './api.js'
 
 export interface ApiClientConfig {
@@ -28,6 +29,7 @@ export interface ApiClient {
     history(limit?: number, offset?: number): Promise<FocusHistoryResponse>
     addThought(content: string, sessionId?: string): Promise<{ thought: Thought }>
     thoughts(): Promise<{ thoughts: Thought[] }>
+    sessionReport(sessionId?: string): Promise<SessionReport>
   }
   ai: {
     analyse(data: AnalyseRequest): Promise<AnalyseResponse>
@@ -92,6 +94,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       addThought: (content, sessionId) =>
         post(ENDPOINTS.FOCUS_THOUGHT, { content, sessionId }),
       thoughts: () => request(ENDPOINTS.FOCUS_THOUGHTS),
+      sessionReport: (sessionId?) =>
+        request(`${ENDPOINTS.FOCUS_SESSION_REPORT}${sessionId ? `?sessionId=${sessionId}` : ''}`),
     },
     ai: {
       analyse: (data) => post(ENDPOINTS.AI_ANALYSE, data),

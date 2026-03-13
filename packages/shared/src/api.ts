@@ -77,6 +77,8 @@ export interface AnalyseRequest {
   subject?: string
   preview?: string
   repeatCount?: number
+  appName?: string      // e.g. "Shopee"
+  packageName?: string  // e.g. "com.shopee.tw"
 }
 
 export interface AnalyseResponse {
@@ -149,6 +151,37 @@ export interface Device {
   platform: Platform
   pushToken?: string | null
   lastSeen: string
+}
+
+// ── Session Report (break-time notification summary) ──
+
+export interface SessionReportEntry {
+  id: string
+  appName: string | null
+  packageName: string | null
+  senderName: string | null
+  subject: string
+  preview: string
+  aiCategory: AiCategory
+  aiScore: number
+  aiShouldBreak: boolean
+  createdAt: string
+}
+
+export interface SessionReport {
+  sessionId: string
+  sessionGoal: string
+  startedAt: string
+  durationMinutes: number
+  totalIntercepted: number
+  critical: SessionReportEntry[]
+  important: SessionReportEntry[]
+  normal: SessionReportEntry[]
+  social: SessionReportEntry[]
+  ads: {
+    count: number
+    topApps: string[]  // ["Shopee x8", "momo x4"]
+  }
 }
 
 export interface SyncState {

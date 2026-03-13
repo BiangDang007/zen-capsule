@@ -3,38 +3,38 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Animated,
   Vibration,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { api } from '../services/api';
 
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
+const CUSTOM_KEY = -1;
 
 export default function FocusScreen() {
   const [selectedMinutes, setSelectedMinutes] = useState(25);
+  const [activePreset, setActivePreset] = useState<number>(25); // tracks which button is highlighted
+  const [customInput, setCustomInput] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const customInputRef = useRef<TextInput>(null);
 
   // Pulse animation when running
   useEffect(() => {
     if (isRunning) {
       const animation = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
+          Animated.timing(pulseAnim, { toValue: 1.05, duration: 2000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
         ]),
       );
       animation.start();
@@ -67,7 +67,7 @@ export default function FocusScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     Vibration.vibrate([0, 500, 200, 500]);
     Alert.alert(
-      'Focus Complete! 🎉',
+      'Focus Complete!',
       `Great job! You stayed focused for ${selectedMinutes} minutes.`,
       [{ text: 'OK' }],
     );
@@ -76,6 +76,29 @@ export default function FocusScreen() {
       setSessionId(null);
     }
   }, [selectedMinutes, sessionId]);
+
+  const selectPreset = (min: number) => {
+    setActivePreset(min);
+    setSelectedMinutes(min);
+    setShowCustomInput(false);
+    setCustomInput('');
+  };
+
+  const selectCustom = () => {
+    setActivePreset(CUSTOM_KEY);
+    setShowCustomInput(true);
+    setTimeout(() => customInputRef.current?.focus(), 100);
+  };
+
+  const confirmCustom = () => {
+    const parsed = parseInt(customInput, 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 480) {
+      Alert.alert('Invalid duration', 'Please enter a number between 1 and 480 minutes.');
+      return;
+    }
+    setSelectedMinutes(parsed);
+    setShowCustomInput(false);
+  };
 
   const startFocus = async () => {
     setRemainingSeconds(selectedMinutes * 60);
@@ -112,12 +135,12 @@ export default function FocusScreen() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const progress = isRunning
-    ? 1 - remainingSeconds / (selectedMinutes * 60)
-    : 0;
+  const progress = isRunning ? 1 - remainingSeconds / (selectedMinutes * 60) : 0;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Timer Circle */}
       <Animated.View
         style={[
@@ -129,42 +152,65 @@ export default function FocusScreen() {
           {isRunning ? formatTime(remainingSeconds) : formatTime(selectedMinutes * 60)}
         </Text>
         {isRunning && (
-          <Text style={styles.progressText}>
-            {Math.round(progress * 100)}% complete
-          </Text>
+          <Text style={styles.progressText}>{Math.round(progress * 100)}% complete</Text>
         )}
       </Animated.View>
 
-      {/* Duration Presets */}
+      {/* Duration Selector */}
       {!isRunning && (
-        <View style={styles.presetRow}>
-          {PRESET_DURATIONS.map(min => (
+        <>
+          <View style={styles.presetRow}>
+            {PRESET_DURATIONS.map(min => (
+              <TouchableOpacity
+                key={min}
+                style={[styles.presetButton, activePreset === min && styles.presetButtonActive]}
+                onPress={() => selectPreset(min)}>
+                <Text style={[styles.presetText, activePreset === min && styles.presetTextActive]}>
+                  {min}m
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {/* Custom button */}
             <TouchableOpacity
-              key={min}
-              style={[
-                styles.presetButton,
-                selectedMinutes === min && styles.presetButtonActive,
-              ]}
-              onPress={() => setSelectedMinutes(min)}>
-              <Text
-                style={[
-                  styles.presetText,
-                  selectedMinutes === min && styles.presetTextActive,
-                ]}>
-                {min}m
+              style={[styles.presetButton, activePreset === CUSTOM_KEY && styles.presetButtonActive]}
+              onPress={selectCustom}>
+              <Text style={[styles.presetText, activePreset === CUSTOM_KEY && styles.presetTextActive]}>
+                {activePreset === CUSTOM_KEY && selectedMinutes !== 25
+                  ? `${selectedMinutes}m`
+                  : '...'}
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+
+          {/* Custom input row */}
+          {showCustomInput && (
+            <View style={styles.customRow}>
+              <TextInput
+                ref={customInputRef}
+                style={styles.customInput}
+                placeholder="1–480"
+                placeholderTextColor="#555577"
+                keyboardType="number-pad"
+                maxLength={3}
+                value={customInput}
+                onChangeText={setCustomInput}
+                onSubmitEditing={confirmCustom}
+                returnKeyType="done"
+              />
+              <Text style={styles.customUnit}>min</Text>
+              <TouchableOpacity style={styles.customConfirm} onPress={confirmCustom}>
+                <Text style={styles.customConfirmText}>Set</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
       )}
 
       {/* Start / Stop Button */}
       <TouchableOpacity
         style={[styles.mainButton, isRunning && styles.stopButton]}
         onPress={isRunning ? stopFocus : startFocus}>
-        <Text style={styles.mainButtonText}>
-          {isRunning ? 'End Session' : 'Start Focus'}
-        </Text>
+        <Text style={styles.mainButtonText}>{isRunning ? 'End Session' : 'Start Focus'}</Text>
       </TouchableOpacity>
 
       {/* Status */}
@@ -173,7 +219,7 @@ export default function FocusScreen() {
           ? '🧘 Digital barrier active — distractions blocked'
           : 'Tap to begin your focus session'}
       </Text>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -217,11 +263,13 @@ const styles = StyleSheet.create({
   },
   presetRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 32,
+    gap: 10,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   presetButton: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: '#1A1A2E',
@@ -240,12 +288,46 @@ const styles = StyleSheet.create({
   presetTextActive: {
     color: '#6C63FF',
   },
+  customRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  customInput: {
+    width: 72,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderWidth: 1,
+    borderColor: '#6C63FF',
+    color: '#E0E0FF',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  customUnit: {
+    color: '#8888AA',
+    fontSize: 16,
+  },
+  customConfirm: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#6C63FF',
+  },
+  customConfirmText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+  },
   mainButton: {
     backgroundColor: '#6C63FF',
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 48,
     marginBottom: 24,
+    marginTop: 8,
   },
   stopButton: {
     backgroundColor: '#FF4757',

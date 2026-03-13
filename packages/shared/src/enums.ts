@@ -5,7 +5,7 @@ export type Phase = 'RITUAL' | 'FOCUS' | 'BREAK'
 export type Platform = 'CHROME' | 'IOS' | 'ANDROID'
 
 // AI urgency category
-export type AiCategory = 'critical' | 'important' | 'normal' | 'social'
+export type AiCategory = 'critical' | 'important' | 'normal' | 'social' | 'ads'
 
 // User feedback action on AI decision
 export type UserAction =

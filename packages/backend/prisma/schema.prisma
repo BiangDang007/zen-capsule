@@ -22,6 +22,22 @@ model User {
   whitelist     Whitelist[]
   behaviorLogs  BehaviorLog[]
   devices       Device[]
+  dailyUsage    DailyUsage[]
+}
+
+// ── AI 每日用量追蹤 ───────────────────────────────────
+model DailyUsage {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       String   // "2024-01-15"
+  analyses   Int      @default(0)  // Claude Haiku 緊急度判斷
+  summaries  Int      @default(0)  // Claude Sonnet 信件摘要
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 model Profile {
@@ -121,6 +137,8 @@ model BehaviorLog {
   aiScore         Int
   aiCategory      AiCategory
   aiShouldBreak   Boolean
+  appName         String?     // "Shopee", "LINE", "Gmail"
+  packageName     String?     // "com.shopee.tw"
   aiReason        String?
   modelVersion    String      @default("claude-haiku")
   userAction      UserAction?
@@ -138,6 +156,7 @@ enum AiCategory {
   important
   normal
   social
+  ads
 }
 
 enum UserAction {

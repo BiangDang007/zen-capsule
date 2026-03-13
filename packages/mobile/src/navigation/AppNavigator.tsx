@@ -9,6 +9,7 @@ import LoginScreen from '../screens/LoginScreen';
 import FocusScreen from '../screens/FocusScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import BreakReportScreen from '../screens/BreakReportScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,6 +48,17 @@ function MainTabs() {
           headerTitle: 'Session History',
           tabBarIcon: ({ color }) => (
             <TabIcon label="📊" color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={BreakReportScreen}
+        options={{
+          title: 'Messages',
+          headerTitle: '📬 休息時間',
+          tabBarIcon: ({ color }) => (
+            <TabIcon label="📬" color={color} />
           ),
         }}
       />
