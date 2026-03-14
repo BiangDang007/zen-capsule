@@ -31,7 +31,7 @@ zen-capsule/                          # npm workspaces monorepo
 | **npm**           | >= 9.0 (workspaces)    | (bundled with Node)          | (comes with Node)                            |
 | **PostgreSQL**    | >= 14                  | 16.12                        | `brew install postgresql@16`                 |
 | **Java (JDK)**    | 17                     | OpenJDK 17.0.18 (Homebrew)   | `brew install openjdk@17`                    |
-| **Android Studio**| 2024.x+                | 2025.3.1 (Meerkat)           | https://developer.android.com/studio         |
+| **Android Studio**| 2024.x+                | 2025.3.1 Panda 1             | https://developer.android.com/studio         |
 | **Android SDK**   | API 36                 | 36.1                         | Via Android Studio SDK Manager               |
 | **Android NDK**   | 27.x                   | 27.1.12297006                | Via Android Studio SDK Manager               |
 
