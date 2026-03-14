@@ -12,6 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { api } from '../services/api';
+import { setFocusMode, setAuthToken } from '../services/notificationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
 const CUSTOM_KEY = -1;
@@ -64,6 +66,7 @@ export default function FocusScreen() {
 
   const handleSessionComplete = useCallback(() => {
     setIsRunning(false);
+    setFocusMode(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
     Vibration.vibrate([0, 500, 200, 500]);
     Alert.alert(
@@ -103,6 +106,12 @@ export default function FocusScreen() {
   const startFocus = async () => {
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
+
+    // Activate native notification interception
+    const token = await AsyncStorage.getItem('zen_capsule_token');
+    if (token) setAuthToken(token);
+    setFocusMode(true);
+
     try {
       const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
       setSessionId(session.id);
@@ -119,6 +128,7 @@ export default function FocusScreen() {
         style: 'destructive',
         onPress: () => {
           setIsRunning(false);
+          setFocusMode(false);
           if (intervalRef.current) clearInterval(intervalRef.current);
           if (sessionId) {
             api.focus.end({ sessionId }).catch(() => {});

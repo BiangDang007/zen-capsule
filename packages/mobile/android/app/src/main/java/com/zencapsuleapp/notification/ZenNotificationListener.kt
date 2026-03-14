@@ -41,8 +41,8 @@ class ZenNotificationListener : NotificationListenerService() {
         )
 
         // Package prefix patterns to skip (system internals)
+        // NOTE: do NOT use broad "com.android." — it blocks com.android.shell (adb test notifications)
         private val SKIP_PREFIXES = listOf(
-            "com.android.",
             "com.google.android.gms",
             "com.google.android.gsf",
         )
