@@ -129,14 +129,18 @@ export async function focusRoutes(app: FastifyInstance) {
       select: {
         id: true, appName: true, packageName: true,
         senderName: true, subject: true, preview: true,
-        aiCategory: true, aiScore: true, aiShouldBreak: true, createdAt: true,
+        aiCategory: true, aiScore: true, aiShouldBreak: true,
+        aiReason: true, userAction: true,
+        createdAt: true,
       },
       orderBy: { createdAt: 'asc' },
     })
 
     const byCategory = (cat: string) =>
       logs.filter(l => l.aiCategory === cat).map(l => ({
-        ...l, createdAt: l.createdAt.toISOString(),
+        ...l,
+        logId: l.id,      // expose for feedback API
+        createdAt: l.createdAt.toISOString(),
       }))
 
     const adsLogs = logs.filter(l => l.aiCategory === 'ads')

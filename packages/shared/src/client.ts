@@ -7,6 +7,7 @@ import type {
   EmailSummaryRequest, EmailSummaryResult,
   TaskBreakdownRequest, TaskBreakdownResult,
   WhitelistEntry, AddWhitelistRequest,
+  AppRule, AddAppRuleRequest,
   RegisterDeviceRequest, Device, SyncState,
   SessionReport,
 } from './api.js'
@@ -39,6 +40,9 @@ export interface ApiClient {
     getWhitelist(): Promise<{ whitelist: WhitelistEntry[] }>
     addWhitelist(data: AddWhitelistRequest): Promise<{ entry: WhitelistEntry }>
     removeWhitelist(id: string): Promise<{ ok: true }>
+    getAppRules(): Promise<{ rules: AppRule[] }>
+    addAppRule(data: AddAppRuleRequest): Promise<{ rule: AppRule }>
+    removeAppRule(id: string): Promise<{ ok: true }>
   }
   sync: {
     state(): Promise<SyncState>
@@ -105,6 +109,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       getWhitelist: () => request(ENDPOINTS.AI_WHITELIST),
       addWhitelist: (data) => post(ENDPOINTS.AI_WHITELIST, data),
       removeWhitelist: (id) => del(`${ENDPOINTS.AI_WHITELIST}/${id}`),
+      getAppRules: () => request(ENDPOINTS.AI_APP_RULES),
+      addAppRule: (data) => post(ENDPOINTS.AI_APP_RULES, data),
+      removeAppRule: (id) => del(`${ENDPOINTS.AI_APP_RULES}/${id}`),
     },
     sync: {
       state: () => request(ENDPOINTS.SYNC_STATE),

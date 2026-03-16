@@ -23,6 +23,7 @@ export const ENDPOINTS = {
   AI_SUMMARISE_EMAILS: '/ai/summarise-emails',
   AI_BREAKDOWN_TASK: '/ai/breakdown-task',
   AI_WHITELIST: '/ai/whitelist',
+  AI_APP_RULES: '/ai/app-rules',
 
   // Sync
   SYNC_DEVICE: '/sync/device',

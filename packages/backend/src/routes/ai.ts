@@ -32,7 +32,14 @@ const emailSummarySchema = z.object({
 const whitelistSchema = z.object({
   name: z.string().min(1).max(200),
   contact: z.string().min(1).max(500),
+  relationship: z.enum(['boss', 'client', 'family', 'friend', 'coworker', 'other']).default('other'),
   priority: z.number().int().min(1).max(10).default(1),
+})
+
+const appRuleSchema = z.object({
+  appName: z.string().min(1).max(100),
+  packageName: z.string().max(200).optional(),
+  action: z.enum(['always_block', 'always_allow', 'ask_ai']),
 })
 
 /** Verify the export admin key from Authorization header (not query param!) */
@@ -67,28 +74,103 @@ export async function aiRoutes(app: FastifyInstance) {
     const body = analyseSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
 
+    // ── Check app-level rules first (saves API calls) ──
+    if (body.data.appName) {
+      const appRule = await prisma.appRule.findUnique({
+        where: { userId_appName: { userId, appName: body.data.appName } },
+      })
+      if (appRule?.action === 'always_block') {
+        const now = new Date()
+        const log = await prisma.behaviorLog.create({
+          data: {
+            userId,
+            senderEmail: body.data.senderContact,
+            senderName: body.data.senderName,
+            subject: body.data.subject || body.data.content.slice(0, 100),
+            preview: body.data.preview || body.data.content.slice(0, 200),
+            appName: body.data.appName,
+            packageName: body.data.packageName,
+            isWhitelisted: false,
+            repeatCount: body.data.repeatCount ?? 1,
+            hourOfDay: now.getHours(),
+            dayOfWeek: now.getDay(),
+            aiScore: 0,
+            aiCategory: 'ads',
+            aiShouldBreak: false,
+            aiReason: 'App-level block rule',
+            modelVersion: 'local-rule',
+          },
+        })
+        return reply.send({
+          result: { score: 0, isUrgent: false, shouldBreakthrough: false, reason: 'App 已被封鎖', category: 'ads' as const },
+          logId: log.id,
+        })
+      }
+      if (appRule?.action === 'always_allow') {
+        const now = new Date()
+        const log = await prisma.behaviorLog.create({
+          data: {
+            userId,
+            senderEmail: body.data.senderContact,
+            senderName: body.data.senderName,
+            subject: body.data.subject || body.data.content.slice(0, 100),
+            preview: body.data.preview || body.data.content.slice(0, 200),
+            appName: body.data.appName,
+            packageName: body.data.packageName,
+            isWhitelisted: true,
+            repeatCount: body.data.repeatCount ?? 1,
+            hourOfDay: now.getHours(),
+            dayOfWeek: now.getDay(),
+            aiScore: 100,
+            aiCategory: 'critical',
+            aiShouldBreak: true,
+            aiReason: 'App-level allow rule',
+            modelVersion: 'local-rule',
+          },
+        })
+        return reply.send({
+          result: { score: 100, isUrgent: true, shouldBreakthrough: true, reason: 'App 已設為允許通過', category: 'critical' as const },
+          logId: log.id,
+        })
+      }
+    }
+
     try {
       await checkAndIncrement(userId, 'analyses')
     } catch (err) {
       return handleUsageError(err, reply)
     }
 
+    // ── Whitelist + relationship lookup ──
     const whitelisted = body.data.senderContact
       ? await prisma.whitelist.findFirst({
           where: { userId, contact: { equals: body.data.senderContact, mode: 'insensitive' } },
         })
       : null
 
+    // ── Sender history: find most recent AI category for this sender ──
+    const recentLog = body.data.senderName
+      ? await prisma.behaviorLog.findFirst({
+          where: { userId, senderName: body.data.senderName },
+          orderBy: { createdAt: 'desc' },
+          select: { aiCategory: true },
+        })
+      : null
+
+    const now = new Date()
     const result = await analyseUrgency({
       content: body.data.content,
       senderName: body.data.senderName,
       senderContact: body.data.senderContact,
       isWhitelisted: !!whitelisted,
       repeatCount: body.data.repeatCount ?? 1,
+      senderRelationship: (whitelisted as any)?.relationship ?? undefined,
+      hourOfDay: now.getHours(),
+      appName: body.data.appName,
+      recentSenderCategory: recentLog?.aiCategory ?? undefined,
     })
 
     // Use transaction to atomically update session + create log (avoids race condition)
-    const now = new Date()
     const log = await prisma.$transaction(async (tx) => {
       await tx.focusSession.updateMany({
         where: { userId, endedAt: null },
@@ -310,7 +392,15 @@ export async function aiRoutes(app: FastifyInstance) {
     const userId = (req.user as { sub: string }).sub
     const body = whitelistSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
-    const entry = await prisma.whitelist.create({ data: { userId, name: body.data.name, contact: body.data.contact, priority: body.data.priority ?? 1 } })
+    const entry = await prisma.whitelist.create({
+      data: {
+        userId,
+        name: body.data.name,
+        contact: body.data.contact,
+        relationship: body.data.relationship as any ?? 'other',
+        priority: body.data.priority ?? 1,
+      },
+    })
     return reply.status(201).send({ entry })
   })
 
@@ -320,6 +410,35 @@ export async function aiRoutes(app: FastifyInstance) {
     const entry = await prisma.whitelist.findFirst({ where: { id, userId } })
     if (!entry) return reply.status(404).send({ error: 'Not found' })
     await prisma.whitelist.delete({ where: { id } })
+    return reply.send({ ok: true })
+  })
+
+  // ── App Rules CRUD ──────────────────────────────────
+  app.get('/ai/app-rules', auth, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const rules = await prisma.appRule.findMany({ where: { userId }, orderBy: { appName: 'asc' } })
+    return reply.send({ rules })
+  })
+
+  app.post('/ai/app-rules', auth, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const body = appRuleSchema.safeParse(req.body)
+    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
+
+    const rule = await prisma.appRule.upsert({
+      where: { userId_appName: { userId, appName: body.data.appName } },
+      create: { userId, appName: body.data.appName, packageName: body.data.packageName, action: body.data.action as any },
+      update: { action: body.data.action as any, packageName: body.data.packageName },
+    })
+    return reply.status(201).send({ rule })
+  })
+
+  app.delete('/ai/app-rules/:id', auth, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const { id } = req.params as { id: string }
+    const rule = await prisma.appRule.findFirst({ where: { id, userId } })
+    if (!rule) return reply.status(404).send({ error: 'Not found' })
+    await prisma.appRule.delete({ where: { id } })
     return reply.send({ ok: true })
   })
 }

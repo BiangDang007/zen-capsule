@@ -10,7 +10,12 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, tryRefreshToken } from '../services/api';
-import type { SessionReport, SessionReportEntry } from '@zen-capsule/shared';
+import type {
+  SessionReport,
+  SessionReportEntry,
+  SessionReportEntryWithFeedback,
+  UserAction,
+} from '@zen-capsule/shared';
 
 // ── Section config ─────────────────────────────────────────────────────────
 
@@ -36,13 +41,24 @@ export default function BreakReportScreen() {
   // Track the list of completed sessions for browsing
   const [sessionList, setSessionList] = useState<{ id: string; goal: string; startedAt: string }[]>([])
   const [currentSessionIdx, setCurrentSessionIdx] = useState(0)
+  // Track which entries have received feedback
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, UserAction>>({})
 
   const fetchReport = useCallback(async (sessionId?: string) => {
     try {
       const data = await api.focus.sessionReport(sessionId)
       setReport(data)
+      // Pre-fill feedback state from server data
+      const existing: Record<string, UserAction> = {}
+      for (const key of ['critical', 'important', 'normal', 'social'] as const) {
+        for (const entry of (data[key] as any[])) {
+          if (entry.userAction) {
+            existing[entry.logId || entry.id] = entry.userAction
+          }
+        }
+      }
+      setFeedbackSent(existing)
     } catch (err: any) {
-      // Auto-refresh token on 401 and retry once
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
         const refreshed = await tryRefreshToken()
         if (refreshed) {
@@ -51,7 +67,7 @@ export default function BreakReportScreen() {
             setReport(data)
             return
           } catch {
-            // Retry failed — fall through
+            // Retry failed
           }
         }
       }
@@ -64,7 +80,6 @@ export default function BreakReportScreen() {
   const fetchSessionList = useCallback(async () => {
     try {
       const historyData = await api.focus.history(20, 0)
-      // Only completed sessions (they have durationSeconds > 0)
       const completed = historyData.sessions.filter((s: any) => s.endedAt != null)
       setSessionList(completed.map((s: any) => ({
         id: s.id,
@@ -72,15 +87,15 @@ export default function BreakReportScreen() {
         startedAt: s.startedAt,
       })))
     } catch {
-      // ignore — session list is a nice-to-have
+      // ignore
     }
   }, [])
 
-  // Re-fetch every time the tab gains focus (not just on mount)
   useFocusEffect(
     useCallback(() => {
       setLoading(true)
       setCurrentSessionIdx(0)
+      setFeedbackSent({})
       fetchReport()
       fetchSessionList()
     }, [fetchReport, fetchSessionList])
@@ -88,17 +103,16 @@ export default function BreakReportScreen() {
 
   const onRefresh = () => {
     setRefreshing(true)
-    // If browsing a specific session, refresh that session (not jump to latest)
     const currentId = sessionList[currentSessionIdx]?.id
     fetchReport(currentId)
   }
 
-  // Navigate between sessions
   const goToPrevSession = () => {
     const newIdx = currentSessionIdx + 1
     if (newIdx < sessionList.length) {
       setCurrentSessionIdx(newIdx)
       setLoading(true)
+      setFeedbackSent({})
       fetchReport(sessionList[newIdx].id)
     }
   }
@@ -107,6 +121,7 @@ export default function BreakReportScreen() {
     if (newIdx >= 0) {
       setCurrentSessionIdx(newIdx)
       setLoading(true)
+      setFeedbackSent({})
       fetchReport(sessionList[newIdx].id)
     }
   }
@@ -114,7 +129,17 @@ export default function BreakReportScreen() {
   const toggle = (key: string) =>
     setExpanded(prev => ({ ...prev, [key]: !prev[key] }))
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Feedback handler ────────────────────────────────────────────────────
+  const sendFeedback = async (logId: string, userAction: UserAction) => {
+    try {
+      await api.ai.feedback({ logId, userAction })
+      setFeedbackSent(prev => ({ ...prev, [logId]: userAction }))
+    } catch {
+      // silently fail — feedback is best-effort
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -152,7 +177,6 @@ export default function BreakReportScreen() {
               {report.durationMinutes} 分鐘 · 攔截 {report.totalIntercepted} 則
             </Text>
 
-            {/* Session navigation arrows */}
             {sessionList.length > 1 && (
               <View style={styles.sessionNav}>
                 <TouchableOpacity
@@ -188,7 +212,7 @@ export default function BreakReportScreen() {
         </>
       }
       renderItem={({ item: section }) => {
-        const entries: SessionReportEntry[] = report[section.key]
+        const entries = report[section.key] as (SessionReportEntry & Partial<SessionReportEntryWithFeedback>)[]
         if (entries.length === 0) return null
         const isOpen = expanded[section.key]
 
@@ -210,34 +234,87 @@ export default function BreakReportScreen() {
 
             {/* Entries */}
             {isOpen &&
-              entries.map(entry => (
-                <View key={entry.id} style={styles.entryCard}>
-                  <View style={styles.entryRow}>
-                    <Text style={styles.entryApp}>
-                      {entry.appName ?? entry.packageName ?? '未知 App'}
-                    </Text>
-                    <Text style={styles.entryTime}>
-                      {formatRelativeTime(entry.createdAt)}
-                    </Text>
-                  </View>
-                  {entry.senderName ? (
-                    <Text style={styles.entrySender}>{entry.senderName}</Text>
-                  ) : null}
-                  <Text style={styles.entrySubject} numberOfLines={1}>
-                    {entry.subject}
-                  </Text>
-                  {entry.preview ? (
-                    <Text style={styles.entryPreview} numberOfLines={2}>
-                      {entry.preview}
-                    </Text>
-                  ) : null}
-                  {entry.aiShouldBreak && (
-                    <View style={styles.breakthroughBadge}>
-                      <Text style={styles.breakthroughText}>已穿透通知</Text>
+              entries.map(entry => {
+                const logId = (entry as any).logId as string | undefined
+                const aiReason = (entry as any).aiReason as string | null | undefined
+                const sentAction = logId ? feedbackSent[logId] : undefined
+
+                return (
+                  <View key={entry.id} style={styles.entryCard}>
+                    <View style={styles.entryRow}>
+                      <Text style={styles.entryApp}>
+                        {entry.appName ?? entry.packageName ?? '未知 App'}
+                      </Text>
+                      <Text style={styles.entryTime}>
+                        {formatRelativeTime(entry.createdAt)}
+                      </Text>
                     </View>
-                  )}
-                </View>
-              ))}
+                    {entry.senderName ? (
+                      <Text style={styles.entrySender}>{entry.senderName}</Text>
+                    ) : null}
+                    <Text style={styles.entrySubject} numberOfLines={1}>
+                      {entry.subject}
+                    </Text>
+                    {entry.preview ? (
+                      <Text style={styles.entryPreview} numberOfLines={2}>
+                        {entry.preview}
+                      </Text>
+                    ) : null}
+
+                    {/* AI reason */}
+                    {aiReason ? (
+                      <Text style={styles.aiReason}>AI: {aiReason}</Text>
+                    ) : null}
+
+                    {entry.aiShouldBreak && (
+                      <View style={styles.breakthroughBadge}>
+                        <Text style={styles.breakthroughText}>已穿透通知</Text>
+                      </View>
+                    )}
+
+                    {/* Feedback buttons */}
+                    {logId ? (
+                      <View style={styles.feedbackRow}>
+                        {sentAction ? (
+                          <View style={styles.feedbackSent}>
+                            <Text style={styles.feedbackSentText}>
+                              {sentAction === 'CONFIRMED_BLOCK' || sentAction === 'DISMISSED'
+                                ? '✅ 判斷正確'
+                                : sentAction === 'MARKED_URGENT'
+                                  ? '⬆️ 應更緊急'
+                                  : sentAction === 'MARKED_NOT_URGENT'
+                                    ? '⬇️ 不需要這麼緊急'
+                                    : '已回饋'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <>
+                            <Text style={styles.feedbackLabel}>AI 判斷正確嗎？</Text>
+                            <View style={styles.feedbackButtons}>
+                              <TouchableOpacity
+                                style={styles.fbBtnCorrect}
+                                onPress={() => sendFeedback(
+                                  logId,
+                                  entry.aiShouldBreak ? 'ALLOWED_THROUGH' : 'CONFIRMED_BLOCK'
+                                )}>
+                                <Text style={styles.fbBtnCorrectText}>👍 正確</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.fbBtnWrong}
+                                onPress={() => sendFeedback(
+                                  logId,
+                                  entry.aiShouldBreak ? 'MARKED_NOT_URGENT' : 'MARKED_URGENT'
+                                )}>
+                                <Text style={styles.fbBtnWrongText}>👎 不對</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                )
+              })}
           </View>
         )
       }}
@@ -340,10 +417,75 @@ const styles = StyleSheet.create({
   entrySubject: { color: '#FFF0E0', fontSize: 14, fontWeight: '500' },
   entryPreview: { color: '#AA9080', fontSize: 13, marginTop: 3 },
 
+  // AI reason
+  aiReason: {
+    color: '#CCAA88',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#3D2E22',
+  },
+
   breakthroughBadge: {
     marginTop: 6, alignSelf: 'flex-start',
     paddingHorizontal: 8, paddingVertical: 2,
     backgroundColor: '#FF634822', borderRadius: 6,
   },
   breakthroughText: { color: '#FF6348', fontSize: 11, fontWeight: '600' },
+
+  // Feedback
+  feedbackRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#3D2E22',
+  },
+  feedbackLabel: {
+    color: '#887766',
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  fbBtnCorrect: {
+    flex: 1,
+    backgroundColor: '#2ECC7122',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2ECC7144',
+  },
+  fbBtnCorrectText: {
+    color: '#2ECC71',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  fbBtnWrong: {
+    flex: 1,
+    backgroundColor: '#FF634822',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FF634844',
+  },
+  fbBtnWrongText: {
+    color: '#FF6348',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  feedbackSent: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  feedbackSentText: {
+    color: '#AA9080',
+    fontSize: 12,
+    fontWeight: '500',
+  },
 })

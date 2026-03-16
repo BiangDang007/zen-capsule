@@ -68,7 +68,13 @@ export interface MessageContext {
   senderContact?: string
   isWhitelisted: boolean
   repeatCount?: number
+  senderRelationship?: SenderRelationship
+  hourOfDay?: number
+  appName?: string
+  recentSenderCategory?: string // what AI scored this sender last time
 }
+
+export type SenderRelationship = 'boss' | 'client' | 'family' | 'friend' | 'coworker' | 'other'
 
 export interface AnalyseRequest {
   content: string
@@ -128,13 +134,40 @@ export interface WhitelistEntry {
   id: string
   name: string
   contact: string
+  relationship: SenderRelationship
   priority: number
 }
 
 export interface AddWhitelistRequest {
   name: string
   contact: string
+  relationship?: SenderRelationship
   priority?: number
+}
+
+// ── App Rules ────────────────────────────────────────
+
+export type AppRuleAction = 'always_block' | 'always_allow' | 'ask_ai'
+
+export interface AppRule {
+  id: string
+  appName: string
+  packageName?: string | null
+  action: AppRuleAction
+}
+
+export interface AddAppRuleRequest {
+  appName: string
+  packageName?: string
+  action: AppRuleAction
+}
+
+// ── Session Report with logId for feedback ───────────
+
+export interface SessionReportEntryWithFeedback extends SessionReportEntry {
+  logId: string
+  aiReason: string | null
+  userAction: UserAction | null
 }
 
 // ── Sync ──────────────────────────────────────────────

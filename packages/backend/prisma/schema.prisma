@@ -23,6 +23,7 @@ model User {
   behaviorLogs  BehaviorLog[]
   devices       Device[]
   dailyUsage    DailyUsage[]
+  appRules      AppRule[]
 }
 
 // ── AI 每日用量追蹤 ───────────────────────────────────
@@ -98,15 +99,29 @@ model Thought {
   createdAt DateTime @default(now())
 }
 
-// Emergency firewall whitelist
+// Emergency firewall whitelist with relationship tags
 model Whitelist {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  contact   String   // email or phone
-  priority  Int      @default(1)
-  createdAt DateTime @default(now())
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  contact      String             // email or phone
+  relationship SenderRelationship @default(other)
+  priority     Int                @default(1)
+  createdAt    DateTime           @default(now())
+}
+
+// App-level rules — block/allow entire apps without AI
+model AppRule {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appName     String        // "Shopee", "momo", "LINE"
+  packageName String?       // "com.shopee.tw"
+  action      AppRuleAction
+  createdAt   DateTime      @default(now())
+
+  @@unique([userId, appName])
 }
 
 enum Phase {
@@ -119,6 +134,21 @@ enum Platform {
   CHROME
   IOS
   ANDROID
+}
+
+enum SenderRelationship {
+  boss
+  client
+  family
+  friend
+  coworker
+  other
+}
+
+enum AppRuleAction {
+  always_block
+  always_allow
+  ask_ai
 }
 
 // ── Behaviour log ─────────────────────────────────
