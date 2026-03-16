@@ -74,7 +74,9 @@ export async function aiRoutes(app: FastifyInstance) {
     }
 
     const whitelisted = body.data.senderContact
-      ? await prisma.whitelist.findFirst({ where: { userId, contact: body.data.senderContact } })
+      ? await prisma.whitelist.findFirst({
+          where: { userId, contact: { equals: body.data.senderContact, mode: 'insensitive' } },
+        })
       : null
 
     const result = await analyseUrgency({
@@ -85,41 +87,43 @@ export async function aiRoutes(app: FastifyInstance) {
       repeatCount: body.data.repeatCount ?? 1,
     })
 
-    await prisma.focusSession.updateMany({
-      where: { userId, endedAt: null },
-      data: { interceptCount: { increment: 1 } },
-    })
-
-    // ── Auto log every judgement as training data ─────
-    const activeSession = await prisma.focusSession.findFirst({
-      where: { userId, endedAt: null },
-      orderBy: { startedAt: 'desc' },
-    })
+    // Use transaction to atomically update session + create log (avoids race condition)
     const now = new Date()
+    const log = await prisma.$transaction(async (tx) => {
+      await tx.focusSession.updateMany({
+        where: { userId, endedAt: null },
+        data: { interceptCount: { increment: 1 } },
+      })
 
-    const log = await prisma.behaviorLog.create({
-      data: {
-        userId,
-        senderEmail: body.data.senderContact,
-        senderName: body.data.senderName,
-        subject: body.data.subject || body.data.content.slice(0, 100),
-        preview: body.data.preview || body.data.content.slice(0, 200),
-        appName: body.data.appName,
-        packageName: body.data.packageName,
-        isWhitelisted: !!whitelisted,
-        repeatCount: body.data.repeatCount ?? 1,
-        hourOfDay: now.getHours(),
-        dayOfWeek: now.getDay(),
-        aiScore: result.score,
-        aiCategory: result.category as any,
-        aiShouldBreak: result.shouldBreakthrough,
-        aiReason: result.reason,
-        modelVersion: 'claude-haiku-4-5',
-        focusSessionId: activeSession?.id,
-        focusMinute: activeSession
-          ? Math.floor((now.getTime() - activeSession.startedAt.getTime()) / 60000)
-          : null,
-      },
+      const activeSession = await tx.focusSession.findFirst({
+        where: { userId, endedAt: null },
+        orderBy: { startedAt: 'desc' },
+      })
+
+      return tx.behaviorLog.create({
+        data: {
+          userId,
+          senderEmail: body.data.senderContact,
+          senderName: body.data.senderName,
+          subject: body.data.subject || body.data.content.slice(0, 100),
+          preview: body.data.preview || body.data.content.slice(0, 200),
+          appName: body.data.appName,
+          packageName: body.data.packageName,
+          isWhitelisted: !!whitelisted,
+          repeatCount: body.data.repeatCount ?? 1,
+          hourOfDay: now.getHours(),
+          dayOfWeek: now.getDay(),
+          aiScore: result.score,
+          aiCategory: result.category as any,
+          aiShouldBreak: result.shouldBreakthrough,
+          aiReason: result.reason,
+          modelVersion: 'claude-haiku-4-5',
+          focusSessionId: activeSession?.id,
+          focusMinute: activeSession
+            ? Math.floor((now.getTime() - activeSession.startedAt.getTime()) / 60000)
+            : null,
+        },
+      })
     })
 
     return reply.send({ result, logId: log.id })

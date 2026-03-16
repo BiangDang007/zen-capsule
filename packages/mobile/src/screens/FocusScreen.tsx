@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { api } from '../services/api';
-import { setFocusMode, setAuthToken } from '../services/notificationService';
+import { setFocusMode, setAuthToken, setRefreshToken } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
@@ -109,7 +109,9 @@ export default function FocusScreen() {
 
     // Activate native notification interception
     const token = await AsyncStorage.getItem('zen_capsule_token');
+    const refresh = await AsyncStorage.getItem('zen_capsule_refresh');
     if (token) setAuthToken(token);
+    if (refresh) setRefreshToken(refresh);
     setFocusMode(true);
 
     try {

@@ -91,7 +91,12 @@ export default function BreakReportScreen() {
     }, [fetchReport, fetchSessionList])
   )
 
-  const onRefresh = () => { setRefreshing(true); fetchReport() }
+  const onRefresh = () => {
+    setRefreshing(true)
+    // If browsing a specific session, refresh that session (not jump to latest)
+    const currentId = sessionList[currentSessionIdx]?.id
+    fetchReport(currentId)
+  }
 
   // Navigate between sessions
   const goToPrevSession = () => {

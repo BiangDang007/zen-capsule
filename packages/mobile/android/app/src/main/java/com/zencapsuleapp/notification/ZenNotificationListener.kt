@@ -13,6 +13,8 @@ import androidx.core.app.NotificationCompat
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Zen Capsule — Android Notification Listener
@@ -48,20 +50,43 @@ class ZenNotificationListener : NotificationListenerService() {
         )
 
         // Urgent keywords (local pre-check, no API needed)
+        // NOTE: Use specific terms — avoid single chars like "火" that match "火鍋", "火車"
         val URGENT_KEYWORDS = listOf(
             "急", "緊急", "掛掉", "壞掉", "立刻", "馬上",
-            "火", "修", "趕快", "出問題", "異常",
+            "失火", "火災", "修", "趕快", "出問題", "異常",
             "crash", "down", "urgent", "asap", "emergency",
             "critical", "outage", "incident"
         )
 
         // State shared with ZenNotificationModule (React Native bridge)
         var isFocusing = false
+            set(value) {
+                field = value
+                if (value) {
+                    // New session: clear tracking from previous session
+                    synchronized(interceptedNotifications) {
+                        interceptedNotifications.clear()
+                    }
+                    synchronized(senderCounts) {
+                        senderCounts.clear()
+                    }
+                }
+            }
         var authToken: String? = null
+        var refreshToken: String? = null
         var interceptedNotifications = mutableListOf<InterceptedNotification>()
         var onNotificationIntercepted: ((InterceptedNotification) -> Unit)? = null
         var onBreakthroughTriggered: ((InterceptedNotification) -> Unit)? = null
+
+        // Track sender message counts within a session (for repeat detection)
+        private val senderCounts = HashMap<String, Int>()
+
+        // Atomic counter for unique notification IDs (avoids timestamp truncation)
+        private val notificationIdCounter = AtomicInteger(0)
     }
+
+    // Bounded thread pool instead of unbounded Thread per notification
+    private val executor = Executors.newFixedThreadPool(3)
 
     data class InterceptedNotification(
         val packageName: String,
@@ -89,17 +114,32 @@ class ZenNotificationListener : NotificationListenerService() {
         if (packageName in SKIP_PACKAGES) return
         if (SKIP_PREFIXES.any { packageName.startsWith(it) }) return
 
-        // Extract content
+        // Extract content — try BIG_TEXT first for richer data
         val extras = sbn.notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim() ?: ""
-        val text  = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()  ?: ""
+        val text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim()
+            ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()
+            ?: "")
 
         // Skip empty / silent notifications
         if (title.isEmpty() && text.isEmpty()) return
 
         val appName = resolveAppName(packageName)
 
-        Log.d(TAG, "Intercepted [$appName] $title — $text")
+        // For messaging apps, title is usually the sender name (e.g., "老闆", "Mom")
+        // Use title as senderName; appName stays as the app label (e.g., "LINE")
+        val senderName = if (title.isNotEmpty()) title else appName
+
+        // Track repeat messages per sender within this session
+        val senderKey = "$senderName@$packageName"
+        val repeatCount: Int
+        synchronized(senderCounts) {
+            val current = senderCounts.getOrDefault(senderKey, 0) + 1
+            senderCounts[senderKey] = current
+            repeatCount = current
+        }
+
+        Log.d(TAG, "Intercepted [$appName] $title — $text (sender=$senderName, repeat=$repeatCount)")
 
         val notification = InterceptedNotification(
             packageName = packageName,
@@ -112,8 +152,10 @@ class ZenNotificationListener : NotificationListenerService() {
         // Block the original immediately
         cancelNotification(sbn.key)
 
-        Thread {
-            val urgencyResult = checkUrgency(title, text, appName, packageName)
+        executor.execute {
+            val urgencyResult = checkUrgency(
+                title, text, appName, packageName, senderName, repeatCount
+            )
 
             val updated = notification.copy(
                 isUrgent = urgencyResult.isUrgent,
@@ -137,7 +179,7 @@ class ZenNotificationListener : NotificationListenerService() {
             } else {
                 Log.d(TAG, "🛡 Blocked [$appName] ${urgencyResult.score}pt — $title")
             }
-        }.start()
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) { /* no-op */ }
@@ -146,7 +188,10 @@ class ZenNotificationListener : NotificationListenerService() {
 
     data class UrgencyResult(val isUrgent: Boolean, val score: Int, val reason: String)
 
-    private fun checkUrgency(title: String, text: String, appName: String, packageName: String): UrgencyResult {
+    private fun checkUrgency(
+        title: String, text: String, appName: String,
+        packageName: String, senderName: String, repeatCount: Int
+    ): UrgencyResult {
         val combined = "$title $text".lowercase()
 
         // Phase 1: instant keyword check
@@ -156,42 +201,123 @@ class ZenNotificationListener : NotificationListenerService() {
             }
         }
 
-        // Phase 2: Claude AI
+        // Phase 2: Claude AI (with 401 retry)
         val token = authToken ?: return UrgencyResult(false, 0, "No auth token")
 
         return try {
-            val url = URL("$API_BASE/ai/analyse")
-            val conn = url.openConnection() as HttpURLConnection
+            doAnalyseRequest(token, title, text, appName, packageName, senderName, repeatCount)
+        } catch (e: TokenExpiredException) {
+            // Attempt token refresh and retry once
+            Log.w(TAG, "Token expired, attempting refresh...")
+            val newToken = refreshAccessToken()
+            if (newToken != null) {
+                authToken = newToken
+                try {
+                    doAnalyseRequest(newToken, title, text, appName, packageName, senderName, repeatCount)
+                } catch (e2: Exception) {
+                    Log.w(TAG, "AI analysis failed after refresh: ${e2.message}")
+                    UrgencyResult(false, 0, "AI unavailable after refresh")
+                }
+            } else {
+                Log.w(TAG, "Token refresh failed")
+                UrgencyResult(false, 0, "Token refresh failed")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "AI analysis failed: ${e.message}")
+            UrgencyResult(false, 0, "AI unavailable")
+        }
+    }
+
+    /** Custom exception for 401 responses */
+    private class TokenExpiredException : Exception("Access token expired")
+
+    private fun doAnalyseRequest(
+        token: String, title: String, text: String, appName: String,
+        packageName: String, senderName: String, repeatCount: Int
+    ): UrgencyResult {
+        val url = URL("$API_BASE/ai/analyse")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 3000
+        conn.readTimeout = 5000
+        conn.doOutput = true
+
+        val body = JSONObject().apply {
+            put("content", if (title.isNotEmpty()) "$title: $text" else text)
+            put("senderName", senderName)        // actual sender (notification title)
+            put("senderContact", senderName)     // for whitelist matching
+            put("subject", title)
+            put("preview", text)
+            put("appName", appName)              // app label (e.g., "LINE")
+            put("packageName", packageName)
+            put("repeatCount", repeatCount)      // sender repeat count this session
+        }
+
+        conn.outputStream.bufferedWriter().use { it.write(body.toString()) }
+
+        val responseCode = conn.responseCode
+        if (responseCode == 401) {
+            conn.disconnect()
+            throw TokenExpiredException()
+        }
+
+        if (responseCode !in 200..299) {
+            val errorBody = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { null }
+            Log.w(TAG, "AI API returned $responseCode: $errorBody")
+            conn.disconnect()
+            return UrgencyResult(false, 0, "API error: $responseCode")
+        }
+
+        val response = conn.inputStream.bufferedReader().readText()
+        conn.disconnect()
+        val json = JSONObject(response)
+        val result = json.getJSONObject("result")
+
+        return UrgencyResult(
+            isUrgent = result.optBoolean("shouldBreakthrough", false),
+            score    = result.optInt("score", 0),
+            reason   = result.optString("reason", "AI analysis")
+        )
+    }
+
+    /**
+     * Refresh the access token using the stored refresh token.
+     * Returns the new access token, or null if refresh failed.
+     */
+    private fun refreshAccessToken(): String? {
+        val rToken = refreshToken ?: return null
+
+        return try {
+            val refreshUrl = URL("${API_BASE.substringBeforeLast("/api/v1")}/api/v1/auth/refresh")
+            val conn = refreshUrl.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $token")
             conn.connectTimeout = 3000
             conn.readTimeout = 5000
             conn.doOutput = true
 
-            val body = JSONObject().apply {
-                put("content", if (title.isNotEmpty()) "$title: $text" else text)
-                put("senderName", appName)
-                put("subject", title)
-                put("preview", text)
-                put("appName", appName)
-                put("packageName", packageName)
-            }
-
+            val body = JSONObject().apply { put("refreshToken", rToken) }
             conn.outputStream.bufferedWriter().use { it.write(body.toString()) }
 
-            val response = conn.inputStream.bufferedReader().readText()
-            val json = JSONObject(response)
-            val result = json.getJSONObject("result")
-
-            UrgencyResult(
-                isUrgent = result.optBoolean("shouldBreakthrough", false),
-                score    = result.optInt("score", 0),
-                reason   = result.optString("reason", "AI analysis")
-            )
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                val json = JSONObject(response)
+                val newAccessToken = json.getString("accessToken")
+                val newRefreshToken = json.getString("refreshToken")
+                refreshToken = newRefreshToken
+                Log.d(TAG, "Token refreshed successfully")
+                newAccessToken
+            } else {
+                conn.disconnect()
+                Log.w(TAG, "Token refresh returned ${conn.responseCode}")
+                null
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "AI analysis failed: ${e.message}")
-            UrgencyResult(false, 0, "AI unavailable")
+            Log.w(TAG, "Token refresh error: ${e.message}")
+            null
         }
     }
 
@@ -207,7 +333,8 @@ class ZenNotificationListener : NotificationListenerService() {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .build()
-        manager.notify(notif.timestamp.toInt(), n)
+        // Use atomic counter to avoid ID collisions from timestamp truncation
+        manager.notify(notificationIdCounter.incrementAndGet(), n)
     }
 
     private fun createNotificationChannel() {

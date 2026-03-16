@@ -26,11 +26,18 @@ export async function focusRoutes(app: FastifyInstance) {
     const body = startSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
 
-    // Close any open session first
-    await prisma.focusSession.updateMany({
+    // Close any open session first (calculate duration to avoid stats being 0)
+    const now = new Date()
+    const openSessions = await prisma.focusSession.findMany({
       where: { userId, endedAt: null },
-      data: { endedAt: new Date(), phase: 'BREAK' },
     })
+    for (const s of openSessions) {
+      const dur = Math.floor((now.getTime() - s.startedAt.getTime()) / 1000)
+      await prisma.focusSession.update({
+        where: { id: s.id },
+        data: { endedAt: now, phase: 'BREAK', durationSeconds: dur },
+      })
+    }
 
     const session = await prisma.focusSession.create({
       data: { userId, goal: body.data.goal, phase: 'FOCUS' },

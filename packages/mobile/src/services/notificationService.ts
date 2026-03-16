@@ -70,6 +70,14 @@ export function setAuthToken(token: string | null): void {
 }
 
 /**
+ * Set refresh token for auto-refreshing expired access tokens during long sessions
+ */
+export function setRefreshToken(token: string | null): void {
+  if (!isAndroid) return;
+  ZenNotificationModule.setRefreshToken(token);
+}
+
+/**
  * Get all intercepted notifications
  */
 export async function getInterceptedNotifications(): Promise<InterceptedNotification[]> {

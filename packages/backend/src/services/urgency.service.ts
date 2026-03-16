@@ -73,7 +73,20 @@ Return JSON:
   })
 
   const raw = (message.content[0] as { type: string; text: string }).text
-  const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()) as UrgencyResult
+
+  let parsed: UrgencyResult
+  try {
+    parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()) as UrgencyResult
+  } catch {
+    // AI returned malformed JSON — default to safe (blocked) result
+    parsed = {
+      score: 0,
+      isUrgent: false,
+      shouldBreakthrough: false,
+      reason: 'AI response parse error',
+      category: 'normal',
+    }
+  }
 
   // 白名單 + 高分 → 強制穿透
   if (ctx.isWhitelisted && parsed.score >= 80) {
@@ -84,6 +97,12 @@ Return JSON:
   if ((ctx.repeatCount ?? 1) >= 5) {
     parsed.shouldBreakthrough = true
     parsed.reason += ' [連環傳訊觸發穿透]'
+  }
+
+  // Server-side guard: score < 80 must NOT breakthrough
+  // unless overridden by whitelist or repeat detection above
+  if (parsed.score < 80 && !ctx.isWhitelisted && (ctx.repeatCount ?? 1) < 5) {
+    parsed.shouldBreakthrough = false
   }
 
   return parsed
@@ -141,7 +160,11 @@ Return JSON:
   })
 
   const raw = (message.content[0] as { type: string; text: string }).text
-  return JSON.parse(raw.replace(/```json|```/g, '').trim()) as EmailSummaryResult
+  try {
+    return JSON.parse(raw.replace(/```json|```/g, '').trim()) as EmailSummaryResult
+  } catch {
+    return { urgent: [], todo: [], personal: [], adsCount: 0 }
+  }
 }
 
 // ════════════════════════════════════════════════════
@@ -182,5 +205,9 @@ Return JSON:
   })
 
   const raw = (message.content[0] as { type: string; text: string }).text
-  return JSON.parse(raw.replace(/```json|```/g, '').trim()) as TaskBreakdownResult
+  try {
+    return JSON.parse(raw.replace(/```json|```/g, '').trim()) as TaskBreakdownResult
+  } catch {
+    return { steps: [{ order: 1, task: goal, estimatedMinutes: durationMinutes }], totalMinutes: durationMinutes }
+  }
 }

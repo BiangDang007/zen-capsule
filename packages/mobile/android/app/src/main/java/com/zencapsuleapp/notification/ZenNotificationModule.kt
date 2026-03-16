@@ -66,6 +66,27 @@ class ZenNotificationModule(reactContext: ReactApplicationContext) :
     }
 
     /**
+     * Set refresh token for auto-refreshing expired access tokens during long sessions
+     */
+    @ReactMethod
+    fun setRefreshToken(token: String?) {
+        ZenNotificationListener.refreshToken = token
+    }
+
+    /**
+     * Required by NativeEventEmitter on Android (RN 0.65+)
+     */
+    @ReactMethod
+    fun addListener(eventName: String) {
+        // No-op: managed by RCTDeviceEventEmitter
+    }
+
+    @ReactMethod
+    fun removeListeners(count: Int) {
+        // No-op: managed by RCTDeviceEventEmitter
+    }
+
+    /**
      * Get all intercepted notifications as JSON array
      */
     @ReactMethod
