@@ -54,7 +54,6 @@ export type {
   FocusHistoryResponse,
   UrgencyResult,
   EmailSummaryResult,
-  TaskBreakdownResult,
   WhitelistEntry,
   SyncState,
 } from '@zen-capsule/shared';

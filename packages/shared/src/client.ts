@@ -5,7 +5,6 @@ import type {
   Thought,
   AnalyseRequest, AnalyseResponse, FeedbackRequest,
   EmailSummaryRequest, EmailSummaryResult,
-  TaskBreakdownRequest, TaskBreakdownResult,
   WhitelistEntry, AddWhitelistRequest,
   AppRule, AddAppRuleRequest,
   RegisterDeviceRequest, Device, SyncState,
@@ -36,7 +35,6 @@ export interface ApiClient {
     analyse(data: AnalyseRequest): Promise<AnalyseResponse>
     feedback(data: FeedbackRequest): Promise<{ ok: true }>
     summariseEmails(data: EmailSummaryRequest): Promise<{ summary: EmailSummaryResult }>
-    breakdownTask(data: TaskBreakdownRequest): Promise<{ breakdown: TaskBreakdownResult }>
     getWhitelist(): Promise<{ whitelist: WhitelistEntry[] }>
     addWhitelist(data: AddWhitelistRequest): Promise<{ entry: WhitelistEntry }>
     removeWhitelist(id: string): Promise<{ ok: true }>
@@ -105,7 +103,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       analyse: (data) => post(ENDPOINTS.AI_ANALYSE, data),
       feedback: (data) => post(ENDPOINTS.AI_FEEDBACK, data),
       summariseEmails: (data) => post(ENDPOINTS.AI_SUMMARISE_EMAILS, data),
-      breakdownTask: (data) => post(ENDPOINTS.AI_BREAKDOWN_TASK, data),
       getWhitelist: () => request(ENDPOINTS.AI_WHITELIST),
       addWhitelist: (data) => post(ENDPOINTS.AI_WHITELIST, data),
       removeWhitelist: (id) => del(`${ENDPOINTS.AI_WHITELIST}/${id}`),

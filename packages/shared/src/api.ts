@@ -114,22 +114,6 @@ export interface EmailSummaryResult {
   adsCount: number
 }
 
-export interface TaskStep {
-  order: number
-  task: string
-  estimatedMinutes: number
-}
-
-export interface TaskBreakdownResult {
-  steps: TaskStep[]
-  totalMinutes: number
-}
-
-export interface TaskBreakdownRequest {
-  goal: string
-  durationMinutes?: number
-}
-
 export interface WhitelistEntry {
   id: string
   name: string
