@@ -167,12 +167,20 @@ export async function focusRoutes(app: FastifyInstance) {
   // ── GET /focus/thoughts ─────────────────────────────
   app.get('/focus/thoughts', auth, async (req, reply) => {
     const userId = (req.user as { sub: string }).sub
+    const { limit = '50', offset = '0' } = req.query as Record<string, string>
+
+    const take = Math.min(Math.max(parseInt(limit) || 50, 1), 100)
+    const skip = Math.max(parseInt(offset) || 0, 0)
+
     const thoughts = await prisma.thought.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take,
+      skip,
     })
-    return reply.send({ thoughts })
+
+    const total = await prisma.thought.count({ where: { userId } })
+    return reply.send({ thoughts, total })
   })
 }
 

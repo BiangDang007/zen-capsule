@@ -55,7 +55,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#999"
+            placeholderTextColor="#AA9080"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
@@ -64,7 +64,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password"
-            placeholderTextColor="#999"
+            placeholderTextColor="#AA9080"
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -75,7 +75,7 @@ export default function LoginScreen() {
             onPress={handleSubmit}
             disabled={loading}>
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#FFF5EB" />
             ) : (
               <Text style={styles.buttonText}>
                 {isRegister ? 'Sign Up' : 'Sign In'}
@@ -101,7 +101,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F1A',
+    backgroundColor: '#1A1410',
   },
   inner: {
     flex: 1,
@@ -119,29 +119,29 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#E0E0FF',
+    color: '#FFF0E0',
     letterSpacing: 1,
   },
   subtitle: {
     fontSize: 14,
-    color: '#8888AA',
+    color: '#AA9080',
     marginTop: 8,
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderWidth: 1,
-    borderColor: '#2A2A4A',
+    borderColor: '#4A3828',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#E0E0FF',
+    color: '#FFF0E0',
   },
   button: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#FF9F43',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFF5EB',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   toggleText: {
-    color: '#6C63FF',
+    color: '#FF9F43',
     fontSize: 14,
   },
 });

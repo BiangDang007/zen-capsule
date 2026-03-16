@@ -18,15 +18,15 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#0F0F1A' },
-        headerTintColor: '#E0E0FF',
+        headerStyle: { backgroundColor: '#1A1410' },
+        headerTintColor: '#FFF0E0',
         tabBarStyle: {
-          backgroundColor: '#0F0F1A',
-          borderTopColor: '#1A1A2E',
+          backgroundColor: '#1A1410',
+          borderTopColor: '#2A2018',
           borderTopWidth: 1,
         },
-        tabBarActiveTintColor: '#6C63FF',
-        tabBarInactiveTintColor: '#555',
+        tabBarActiveTintColor: '#FF9F43',
+        tabBarInactiveTintColor: '#665544',
       }}>
       <Tab.Screen
         name="Focus"
@@ -94,11 +94,11 @@ export default function AppNavigator() {
       <View
         style={{
           flex: 1,
-          backgroundColor: '#0F0F1A',
+          backgroundColor: '#1A1410',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-        <ActivityIndicator size="large" color="#6C63FF" />
+        <ActivityIndicator size="large" color="#FF9F43" />
       </View>
     );
   }

@@ -13,7 +13,7 @@ function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar barStyle="light-content" backgroundColor="#0F0F1A" />
+        <StatusBar barStyle="light-content" backgroundColor="#1A1410" />
         <AppNavigator />
       </AuthProvider>
     </SafeAreaProvider>

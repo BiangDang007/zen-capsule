@@ -5,19 +5,59 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.string().email().max(254),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
 })
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-  deviceId: z.string().optional(),
+  email: z.string().email().max(254),
+  password: z.string().max(128),
+  deviceId: z.string().max(200).optional(),
 })
+
+// ── In-memory login attempt tracker (per-IP) ──────────────────────
+// In production, this should be Redis-backed for multi-instance deployments.
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
+const MAX_LOGIN_ATTEMPTS = 10
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+
+function checkLockout(ip: string): { locked: boolean; retryAfterSec?: number } {
+  const record = loginAttempts.get(ip)
+  if (!record) return { locked: false }
+
+  const elapsed = Date.now() - record.lastAttempt
+  if (record.count >= MAX_LOGIN_ATTEMPTS && elapsed < LOCKOUT_DURATION_MS) {
+    return { locked: true, retryAfterSec: Math.ceil((LOCKOUT_DURATION_MS - elapsed) / 1000) }
+  }
+
+  // Reset after lockout window
+  if (elapsed >= LOCKOUT_DURATION_MS) {
+    loginAttempts.delete(ip)
+    return { locked: false }
+  }
+
+  return { locked: false }
+}
+
+function recordFailedAttempt(ip: string): void {
+  const record = loginAttempts.get(ip)
+  if (record) {
+    record.count += 1
+    record.lastAttempt = Date.now()
+  } else {
+    loginAttempts.set(ip, { count: 1, lastAttempt: Date.now() })
+  }
+}
+
+function clearAttempts(ip: string): void {
+  loginAttempts.delete(ip)
+}
 
 export async function authRoutes(app: FastifyInstance) {
   // ── POST /auth/register ─────────────────────────────
-  app.post('/auth/register', async (req, reply) => {
+  app.post('/auth/register', {
+    config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const body = registerSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
 
@@ -40,15 +80,35 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   // ── POST /auth/login ────────────────────────────────
-  app.post('/auth/login', async (req, reply) => {
+  app.post('/auth/login', {
+    config: { rateLimit: { max: 15, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const body = loginSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
 
+    // Check IP-based lockout
+    const ip = req.ip
+    const lockout = checkLockout(ip)
+    if (lockout.locked) {
+      return reply.status(429).send({
+        error: `Too many login attempts. Try again in ${lockout.retryAfterSec} seconds.`,
+      })
+    }
+
     const user = await prisma.user.findUnique({ where: { email: body.data.email } })
-    if (!user) return reply.status(401).send({ error: 'Invalid credentials' })
+    if (!user) {
+      recordFailedAttempt(ip)
+      return reply.status(401).send({ error: 'Invalid credentials' })
+    }
 
     const valid = await bcrypt.compare(body.data.password, user.passwordHash)
-    if (!valid) return reply.status(401).send({ error: 'Invalid credentials' })
+    if (!valid) {
+      recordFailedAttempt(ip)
+      return reply.status(401).send({ error: 'Invalid credentials' })
+    }
+
+    // Login success — clear attempts
+    clearAttempts(ip)
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, body.data.deviceId)
     return reply.send({

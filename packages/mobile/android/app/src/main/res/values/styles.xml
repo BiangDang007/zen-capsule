@@ -1,9 +1,12 @@
 <resources>
 
-    <!-- Base application theme. -->
+    <!-- Base application theme with warm dark splash screen. -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!-- Warm dark splash background while JS bundle loads -->
+        <item name="android:windowBackground">@color/zen_splash_bg</item>
+        <item name="android:statusBarColor">@color/zen_bg</item>
+        <item name="android:navigationBarColor">@color/zen_bg</item>
     </style>
 
 </resources>

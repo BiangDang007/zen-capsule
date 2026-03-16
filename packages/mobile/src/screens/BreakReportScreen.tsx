@@ -15,9 +15,9 @@ import type { SessionReport, SessionReportEntry } from '@zen-capsule/shared';
 // ── Section config ─────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { key: 'critical' as const, label: '🔴 緊急', color: '#FF4757' },
+  { key: 'critical' as const, label: '🔴 緊急', color: '#FF6348' },
   { key: 'important' as const, label: '🟡 重要', color: '#FFA502' },
-  { key: 'normal' as const, label: '🔵 普通', color: '#6C63FF' },
+  { key: 'normal' as const, label: '🟠 普通', color: '#FF9F43' },
   { key: 'social' as const, label: '💬 社群', color: '#2ECC71' },
 ]
 
@@ -39,24 +39,19 @@ export default function BreakReportScreen() {
 
   const fetchReport = useCallback(async (sessionId?: string) => {
     try {
-      console.log('[BreakReport] fetching session report...', sessionId ?? '(latest)')
       const data = await api.focus.sessionReport(sessionId)
-      console.log('[BreakReport] got report:', JSON.stringify(data).substring(0, 200))
       setReport(data)
     } catch (err: any) {
-      console.error('[BreakReport] ERROR:', err?.message ?? err)
-
       // Auto-refresh token on 401 and retry once
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
-        console.log('[BreakReport] Token expired, attempting refresh...')
         const refreshed = await tryRefreshToken()
         if (refreshed) {
           try {
             const data = await api.focus.sessionReport(sessionId)
             setReport(data)
             return
-          } catch (retryErr: any) {
-            console.error('[BreakReport] Retry failed:', retryErr?.message)
+          } catch {
+            // Retry failed — fall through
           }
         }
       }
@@ -124,7 +119,7 @@ export default function BreakReportScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#6C63FF" />
+        <ActivityIndicator size="large" color="#FF9F43" />
       </View>
     )
   }
@@ -144,7 +139,7 @@ export default function BreakReportScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF9F43" />
       }
       data={SECTIONS}
       keyExtractor={item => item.key}
@@ -265,27 +260,27 @@ function formatRelativeTime(iso: string): string {
 // ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F1A' },
+  container: { flex: 1, backgroundColor: '#1A1410' },
   content: { paddingBottom: 32 },
   centered: {
-    flex: 1, backgroundColor: '#0F0F1A',
+    flex: 1, backgroundColor: '#1A1410',
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
   },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { color: '#E0E0FF', fontSize: 18, fontWeight: '500' },
-  emptySubtext: { color: '#8888AA', fontSize: 14, marginTop: 6, textAlign: 'center' },
+  emptyText: { color: '#FFF0E0', fontSize: 18, fontWeight: '500' },
+  emptySubtext: { color: '#AA9080', fontSize: 14, marginTop: 6, textAlign: 'center' },
 
   // Banner
   banner: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2A2A4A',
+    borderColor: '#4A3828',
   },
-  bannerGoal: { color: '#E0E0FF', fontSize: 16, fontWeight: '600' },
-  bannerMeta: { color: '#8888AA', fontSize: 13, marginTop: 4 },
+  bannerGoal: { color: '#FFF0E0', fontSize: 16, fontWeight: '600' },
+  bannerMeta: { color: '#AA9080', fontSize: 13, marginTop: 4 },
   sessionNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -293,17 +288,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#2A2A4A',
+    borderTopColor: '#4A3828',
   },
   navBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#2A2A4A',
+    backgroundColor: '#4A3828',
   },
   navBtnDisabled: { opacity: 0.3 },
-  navBtnText: { color: '#6C63FF', fontSize: 13, fontWeight: '600' },
-  navIndicator: { color: '#8888AA', fontSize: 12 },
+  navBtnText: { color: '#FF9F43', fontSize: 13, fontWeight: '600' },
+  navIndicator: { color: '#AA9080', fontSize: 12 },
 
   // Ads strip
   adsStrip: {
@@ -326,29 +321,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   sectionLabel: { fontSize: 15, fontWeight: '700', flex: 1 },
-  sectionCount: { color: '#8888AA', fontSize: 13, marginRight: 8 },
+  sectionCount: { color: '#AA9080', fontSize: 13, marginRight: 8 },
   chevron: { fontSize: 11 },
 
   // Entry card
   entryCard: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderRadius: 12,
     padding: 12,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#2A2A4A',
+    borderColor: '#4A3828',
   },
   entryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  entryApp: { color: '#6C63FF', fontSize: 12, fontWeight: '600' },
-  entryTime: { color: '#555577', fontSize: 12 },
-  entrySender: { color: '#AAAACC', fontSize: 13, marginBottom: 2 },
-  entrySubject: { color: '#E0E0FF', fontSize: 14, fontWeight: '500' },
-  entryPreview: { color: '#8888AA', fontSize: 13, marginTop: 3 },
+  entryApp: { color: '#FF9F43', fontSize: 12, fontWeight: '600' },
+  entryTime: { color: '#887766', fontSize: 12 },
+  entrySender: { color: '#CCAA88', fontSize: 13, marginBottom: 2 },
+  entrySubject: { color: '#FFF0E0', fontSize: 14, fontWeight: '500' },
+  entryPreview: { color: '#AA9080', fontSize: 13, marginTop: 3 },
 
   breakthroughBadge: {
     marginTop: 6, alignSelf: 'flex-start',
     paddingHorizontal: 8, paddingVertical: 2,
-    backgroundColor: '#FF475722', borderRadius: 6,
+    backgroundColor: '#FF634822', borderRadius: 6,
   },
-  breakthroughText: { color: '#FF4757', fontSize: 11, fontWeight: '600' },
+  breakthroughText: { color: '#FF6348', fontSize: 11, fontWeight: '600' },
 })

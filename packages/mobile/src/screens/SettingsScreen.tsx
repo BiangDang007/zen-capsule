@@ -73,8 +73,8 @@ export default function SettingsScreen() {
           <Switch
             value={notificationsEnabled}
             onValueChange={setNotificationsEnabled}
-            trackColor={{ false: '#2A2A4A', true: '#6C63FF88' }}
-            thumbColor={notificationsEnabled ? '#6C63FF' : '#555'}
+            trackColor={{ false: '#4A3828', true: '#FF9F4388' }}
+            thumbColor={notificationsEnabled ? '#FF9F43' : '#665544'}
           />
         </View>
       </View>
@@ -89,8 +89,8 @@ export default function SettingsScreen() {
           <Switch
             value={urgentOnlyMode}
             onValueChange={setUrgentOnlyMode}
-            trackColor={{ false: '#2A2A4A', true: '#6C63FF88' }}
-            thumbColor={urgentOnlyMode ? '#6C63FF' : '#555'}
+            trackColor={{ false: '#4A3828', true: '#FF9F4388' }}
+            thumbColor={urgentOnlyMode ? '#FF9F43' : '#665544'}
           />
         </View>
       </View>
@@ -102,7 +102,7 @@ export default function SettingsScreen() {
           <TextInput
             style={styles.addInput}
             placeholder="Add sender email..."
-            placeholderTextColor="#666"
+            placeholderTextColor="#887766"
             value={newSender}
             onChangeText={setNewSender}
             autoCapitalize="none"
@@ -141,12 +141,12 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F1A',
+    backgroundColor: '#1A1410',
     paddingHorizontal: 16,
     paddingTop: 16,
   },
   sectionTitle: {
-    color: '#6C63FF',
+    color: '#FF9F43',
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -155,11 +155,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   card: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2A2A4A',
+    borderColor: '#4A3828',
     marginBottom: 8,
   },
   row: {
@@ -172,16 +172,16 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   label: {
-    color: '#E0E0FF',
+    color: '#FFF0E0',
     fontSize: 16,
   },
   value: {
-    color: '#8888AA',
+    color: '#AA9080',
     fontSize: 14,
     marginTop: 4,
   },
   hint: {
-    color: '#666',
+    color: '#887766',
     fontSize: 12,
     marginTop: 2,
   },
@@ -192,21 +192,21 @@ const styles = StyleSheet.create({
   },
   addInput: {
     flex: 1,
-    backgroundColor: '#0F0F1A',
+    backgroundColor: '#1A1410',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#E0E0FF',
+    color: '#FFF0E0',
     fontSize: 14,
   },
   addButton: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#FF9F43',
     borderRadius: 8,
     paddingHorizontal: 16,
     justifyContent: 'center',
   },
   addButtonText: {
-    color: '#fff',
+    color: '#FFF5EB',
     fontWeight: '600',
   },
   whitelistRow: {
@@ -215,32 +215,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#2A2A4A',
+    borderTopColor: '#4A3828',
   },
   whitelistSender: {
-    color: '#E0E0FF',
+    color: '#FFF0E0',
     fontSize: 14,
   },
   removeText: {
-    color: '#FF4757',
+    color: '#FF6348',
     fontSize: 13,
   },
   emptyText: {
-    color: '#666',
+    color: '#887766',
     fontSize: 13,
     fontStyle: 'italic',
   },
   signOutButton: {
     marginTop: 32,
-    backgroundColor: '#FF475722',
+    backgroundColor: '#FF634822',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FF475744',
+    borderColor: '#FF634844',
   },
   signOutText: {
-    color: '#FF4757',
+    color: '#FF6348',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   version: {
-    color: '#555',
+    color: '#665544',
     fontSize: 12,
   },
 });

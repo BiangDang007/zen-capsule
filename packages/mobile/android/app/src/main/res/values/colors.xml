@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Zen Capsule — Warm Dark Theme -->
+    <color name="zen_bg">#FF1A1410</color>
+    <color name="zen_card">#FF2A2018</color>
+    <color name="zen_primary">#FFFF9F43</color>
+    <color name="zen_text">#FFFFF0E0</color>
+    <color name="zen_splash_bg">#FF1A1410</color>
+</resources>

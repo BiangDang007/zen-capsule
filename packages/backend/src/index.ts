@@ -47,9 +47,20 @@ await app.register(staticFiles, {
 
 // ── Plugins ──────────────────────────────────────────
 await app.register(cors, {
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://app.zencapsule.com', 'chrome-extension://*']
-    : true,
+  origin: (origin, cb) => {
+    if (process.env.NODE_ENV !== 'production') {
+      // Dev: allow all origins
+      cb(null, true)
+      return
+    }
+    // Production whitelist — mobile apps send no Origin header (allowed by !origin)
+    const allowed = ['https://app.zencapsule.com']
+    if (!origin || allowed.includes(origin) || /^chrome-extension:\/\//.test(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Not allowed by CORS'), false)
+    }
+  },
   credentials: true,
 })
 

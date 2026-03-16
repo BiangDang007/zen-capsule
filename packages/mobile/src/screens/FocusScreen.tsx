@@ -10,10 +10,26 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { api } from '../services/api';
 import { setFocusMode, setAuthToken, setRefreshToken } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/** Request POST_NOTIFICATIONS permission on Android 13+ (API 33) */
+async function ensureNotificationPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android' || (Platform.Version as number) < 33) return true;
+  const status = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    {
+      title: 'Notification Permission',
+      message: 'Zen Capsule needs notification access to alert you about urgent messages during focus sessions.',
+      buttonPositive: 'Allow',
+      buttonNegative: 'Deny',
+    },
+  );
+  return status === PermissionsAndroid.RESULTS.GRANTED;
+}
 
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
 const CUSTOM_KEY = -1;
@@ -104,6 +120,9 @@ export default function FocusScreen() {
   };
 
   const startFocus = async () => {
+    // Request POST_NOTIFICATIONS permission on Android 13+
+    await ensureNotificationPermission();
+
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
 
@@ -201,7 +220,7 @@ export default function FocusScreen() {
                 ref={customInputRef}
                 style={styles.customInput}
                 placeholder="1–480"
-                placeholderTextColor="#555577"
+                placeholderTextColor="#887766"
                 keyboardType="number-pad"
                 maxLength={3}
                 value={customInput}
@@ -238,7 +257,7 @@ export default function FocusScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F1A',
+    backgroundColor: '#1A1410',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
@@ -247,16 +266,16 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderWidth: 3,
-    borderColor: '#2A2A4A',
+    borderColor: '#4A3828',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
   },
   timerCircleActive: {
-    borderColor: '#6C63FF',
-    shadowColor: '#6C63FF',
+    borderColor: '#FF9F43',
+    shadowColor: '#FF9F43',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
@@ -265,12 +284,12 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 48,
     fontWeight: '300',
-    color: '#E0E0FF',
+    color: '#FFF0E0',
     fontVariant: ['tabular-nums'],
   },
   progressText: {
     fontSize: 12,
-    color: '#8888AA',
+    color: '#AA9080',
     marginTop: 4,
   },
   presetRow: {
@@ -284,21 +303,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderWidth: 1,
-    borderColor: '#2A2A4A',
+    borderColor: '#4A3828',
   },
   presetButtonActive: {
-    backgroundColor: '#6C63FF22',
-    borderColor: '#6C63FF',
+    backgroundColor: '#FF9F4322',
+    borderColor: '#FF9F43',
   },
   presetText: {
-    color: '#8888AA',
+    color: '#AA9080',
     fontSize: 16,
     fontWeight: '500',
   },
   presetTextActive: {
-    color: '#6C63FF',
+    color: '#FF9F43',
   },
   customRow: {
     flexDirection: 'row',
@@ -311,30 +330,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#2A2018',
     borderWidth: 1,
-    borderColor: '#6C63FF',
-    color: '#E0E0FF',
+    borderColor: '#FF9F43',
+    color: '#FFF0E0',
     fontSize: 18,
     textAlign: 'center',
   },
   customUnit: {
-    color: '#8888AA',
+    color: '#AA9080',
     fontSize: 16,
   },
   customConfirm: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#FF9F43',
   },
   customConfirmText: {
-    color: '#fff',
+    color: '#FFF5EB',
     fontWeight: '600',
     fontSize: 15,
   },
   mainButton: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#FF9F43',
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 48,
@@ -342,15 +361,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   stopButton: {
-    backgroundColor: '#FF4757',
+    backgroundColor: '#FF6348',
   },
   mainButtonText: {
-    color: '#fff',
+    color: '#FFF5EB',
     fontSize: 20,
     fontWeight: '600',
   },
   statusText: {
-    color: '#8888AA',
+    color: '#AA9080',
     fontSize: 14,
     textAlign: 'center',
   },
