@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../services/api';
 import type { FocusSession } from '@zen-capsule/shared';
 
@@ -27,9 +28,12 @@ export default function HistoryScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchHistory();
+    }, [fetchHistory])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -138,8 +142,7 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     marginBottom: 20,
   },
   statCard: {
@@ -150,6 +153,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#4A3828',
+    marginHorizontal: 6,
   },
   statValue: {
     fontSize: 24,

@@ -12,6 +12,7 @@ import {
   Platform,
   PermissionsAndroid,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../services/api';
 import { setFocusMode, setAuthToken, setRefreshToken } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -61,6 +62,21 @@ export default function FocusScreen() {
       pulseAnim.setValue(1);
     }
   }, [isRunning, pulseAnim]);
+
+  // Recover orphaned sessions on mount (e.g. app was force-closed mid-focus)
+  useFocusEffect(
+    useCallback(() => {
+      if (!isRunning) {
+        api.focus.history(1, 0).then(res => {
+          const latest = res.sessions?.[0];
+          if (latest && !latest.endedAt) {
+            // Found an orphaned in-progress session — end it
+            api.focus.end({ sessionId: latest.id }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+    }, [isRunning])
+  );
 
   // Countdown timer
   useEffect(() => {
@@ -294,9 +310,7 @@ const styles = StyleSheet.create({
   },
   presetRow: {
     flexDirection: 'row',
-    gap: 10,
     marginBottom: 16,
-    flexWrap: 'wrap',
     justifyContent: 'center',
   },
   presetButton: {
@@ -306,6 +320,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2018',
     borderWidth: 1,
     borderColor: '#4A3828',
+    margin: 5,
   },
   presetButtonActive: {
     backgroundColor: '#FF9F4322',
@@ -322,7 +337,6 @@ const styles = StyleSheet.create({
   customRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 16,
   },
   customInput: {
@@ -340,6 +354,7 @@ const styles = StyleSheet.create({
   customUnit: {
     color: '#AA9080',
     fontSize: 16,
+    marginHorizontal: 8,
   },
   customConfirm: {
     paddingHorizontal: 16,

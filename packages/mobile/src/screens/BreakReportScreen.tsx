@@ -96,8 +96,8 @@ export default function BreakReportScreen() {
       setLoading(true)
       setCurrentSessionIdx(0)
       setFeedbackSent({})
-      fetchReport()
-      fetchSessionList()
+      // Fetch report first (may auto-close orphaned sessions), then refresh session list
+      fetchReport().then(() => fetchSessionList())
     }, [fetchReport, fetchSessionList])
   )
 
@@ -449,7 +449,6 @@ const styles = StyleSheet.create({
   },
   feedbackButtons: {
     flexDirection: 'row',
-    gap: 8,
   },
   fbBtnCorrect: {
     flex: 1,
@@ -459,6 +458,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#2ECC7144',
+    marginRight: 4,
   },
   fbBtnCorrectText: {
     color: '#2ECC71',
@@ -473,6 +473,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#FF634844',
+    marginLeft: 4,
   },
   fbBtnWrongText: {
     color: '#FF6348',

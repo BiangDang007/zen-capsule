@@ -115,17 +115,49 @@ export async function focusRoutes(app: FastifyInstance) {
     const userId = (req.user as { sub: string }).sub
     const { sessionId } = req.query as { sessionId?: string }
 
-    const session = sessionId
+    let session = sessionId
       ? await prisma.focusSession.findFirst({ where: { id: sessionId, userId } })
       : await prisma.focusSession.findFirst({
           where: { userId, endedAt: { not: null } },
           orderBy: { endedAt: 'desc' },
         })
 
+    // Auto-recover orphaned sessions: if no ended session found,
+    // check for stale in-progress sessions and close them
+    if (!session && !sessionId) {
+      const orphaned = await prisma.focusSession.findFirst({
+        where: { userId, endedAt: null },
+        orderBy: { startedAt: 'desc' },
+      })
+      if (orphaned) {
+        const now = new Date()
+        const dur = Math.floor((now.getTime() - orphaned.startedAt.getTime()) / 1000)
+        session = await prisma.focusSession.update({
+          where: { id: orphaned.id },
+          data: { endedAt: now, phase: 'BREAK', durationSeconds: dur },
+        })
+      }
+    }
+
     if (!session) return reply.status(404).send({ error: 'No session found' })
 
     const logs = await prisma.behaviorLog.findMany({
-      where: { userId, focusSessionId: session.id },
+      where: {
+        userId,
+        // Include logs explicitly linked to session, plus any unlinked logs
+        // created during the session window (covers race condition where
+        // notifications arrived before /focus/start API returned)
+        OR: [
+          { focusSessionId: session.id },
+          {
+            focusSessionId: null,
+            createdAt: {
+              gte: session.startedAt,
+              lte: session.endedAt ?? new Date(),
+            },
+          },
+        ],
+      },
       select: {
         id: true, appName: true, packageName: true,
         senderName: true, subject: true, preview: true,

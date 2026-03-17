@@ -128,7 +128,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   form: {
-    gap: 16,
   },
   input: {
     backgroundColor: '#2A2018',
@@ -139,6 +138,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: '#FFF0E0',
+    marginBottom: 16,
   },
   button: {
     backgroundColor: '#FF9F43',

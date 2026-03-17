@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Switch,
   ScrollView,
   Alert,
   TextInput,
+  InteractionManager,
+  Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,6 +48,51 @@ const ACTION_LABELS: Record<AppRuleAction, string> = {
   ask_ai: '🤖 AI',
 }
 
+// ── Custom Toggle (avoids Fabric Switch crash) ───────────────────────────
+
+function Toggle({ value, onValueChange }: { value: boolean; onValueChange: (v: boolean) => void }) {
+  const translateX = React.useRef(new Animated.Value(value ? 20 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(translateX, {
+      toValue: value ? 20 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [value, translateX]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onValueChange(!value)}
+      style={[toggleStyles.track, value && toggleStyles.trackActive]}>
+      <Animated.View
+        style={[toggleStyles.thumb, { transform: [{ translateX }] }]}
+      />
+    </TouchableOpacity>
+  );
+}
+
+const toggleStyles = StyleSheet.create({
+  track: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#4A3828',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  trackActive: {
+    backgroundColor: '#FF9F4388',
+  },
+  thumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FF9F43',
+  },
+});
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
@@ -65,11 +111,40 @@ export default function SettingsScreen() {
   const [newAppName, setNewAppName] = useState('');
   const [newAppAction, setNewAppAction] = useState<AppRuleAction>('always_block');
 
-  // Fetch data on focus
+  // Track whether the very first mount has finished so we can safely
+  // call setState without racing against Fabric's initial commit.
+  const hasMounted = useRef(false);
+
+  // Fetch data on focus — but DEFER on first mount.
+  //
+  // WHY: On Android Fabric (New Architecture), useFocusEffect fires
+  // immediately when the tab screen mounts. If the API responds before
+  // Fabric finishes committing the initial view tree, the resulting
+  // setState triggers a re-render that conflicts with the in-progress
+  // mount → "addViewAt: child already has a parent" crash.
+  //
+  // FIX: On the very first focus, wait for InteractionManager (which
+  // signals that all pending native animations/mount work is done)
+  // before fetching. On subsequent focuses (tab switch back), Fabric
+  // has already mounted so we can fetch immediately.
   useFocusEffect(
     useCallback(() => {
-      api.ai.getWhitelist().then(res => setWhitelist(res.whitelist)).catch(() => {});
-      api.ai.getAppRules().then(res => setAppRules(res.rules)).catch(() => {});
+      const doFetch = () => {
+        api.ai.getWhitelist().then(res => setWhitelist(res.whitelist)).catch(() => {});
+        api.ai.getAppRules().then(res => setAppRules(res.rules)).catch(() => {});
+      };
+
+      if (!hasMounted.current) {
+        // First mount: defer until Fabric finishes committing the view tree
+        const handle = InteractionManager.runAfterInteractions(() => {
+          hasMounted.current = true;
+          doFetch();
+        });
+        return () => handle.cancel();
+      }
+
+      // Subsequent focus events: safe to fetch immediately
+      doFetch();
     }, [])
   );
 
@@ -156,12 +231,7 @@ export default function SettingsScreen() {
             <Text style={styles.label}>緊急通知穿透</Text>
             <Text style={styles.hint}>允許緊急訊息在專注時穿透</Text>
           </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            trackColor={{ false: '#4A3828', true: '#FF9F4388' }}
-            thumbColor={notificationsEnabled ? '#FF9F43' : '#665544'}
-          />
+          <Toggle value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
         </View>
       </View>
       <View style={styles.card}>
@@ -170,12 +240,7 @@ export default function SettingsScreen() {
             <Text style={styles.label}>AI 緊急判斷</Text>
             <Text style={styles.hint}>使用 Claude AI 分析訊息緊急度</Text>
           </View>
-          <Switch
-            value={urgentOnlyMode}
-            onValueChange={setUrgentOnlyMode}
-            trackColor={{ false: '#4A3828', true: '#FF9F4388' }}
-            thumbColor={urgentOnlyMode ? '#FF9F43' : '#665544'}
-          />
+          <Toggle value={urgentOnlyMode} onValueChange={setUrgentOnlyMode} />
         </View>
       </View>
 
@@ -203,7 +268,26 @@ export default function SettingsScreen() {
         {/* Relationship chips */}
         <Text style={styles.chipLabel}>關係</Text>
         <View style={styles.chipRow}>
-          {RELATIONSHIPS.map(r => (
+          {RELATIONSHIPS.slice(0, 3).map(r => (
+            <TouchableOpacity
+              key={r.value}
+              style={[
+                styles.chip,
+                newRelationship === r.value && styles.chipActive,
+              ]}
+              onPress={() => setNewRelationship(r.value)}>
+              <Text
+                style={[
+                  styles.chipText,
+                  newRelationship === r.value && styles.chipTextActive,
+                ]}>
+                {r.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.chipRow}>
+          {RELATIONSHIPS.slice(3).map(r => (
             <TouchableOpacity
               key={r.value}
               style={[
@@ -425,8 +509,7 @@ const styles = StyleSheet.create({
   },
   chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    marginBottom: 4,
   },
   chip: {
     paddingHorizontal: 12,
@@ -435,6 +518,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1410',
     borderWidth: 1,
     borderColor: '#4A3828',
+    margin: 3,
   },
   chipActive: {
     backgroundColor: '#FF9F4322',
@@ -479,12 +563,12 @@ const styles = StyleSheet.create({
   whitelistMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     marginTop: 4,
   },
   whitelistContact: {
     color: '#887766',
     fontSize: 12,
+    marginLeft: 8,
   },
   relationBadge: {
     paddingHorizontal: 8,
