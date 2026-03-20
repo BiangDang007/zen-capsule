@@ -78,6 +78,25 @@ export async function focusRoutes(app: FastifyInstance) {
     const userId = (req.user as { sub: string }).sub
     const { limit = '10', offset = '0' } = req.query as Record<string, string>
 
+    // Auto-close ALL orphaned sessions (endedAt is null).
+    // These occur when the app is force-closed mid-focus.
+    const orphaned = await prisma.focusSession.findMany({
+      where: { userId, endedAt: null },
+    })
+    if (orphaned.length > 0) {
+      const now = new Date()
+      await Promise.all(orphaned.map(s =>
+        prisma.focusSession.update({
+          where: { id: s.id },
+          data: {
+            endedAt: now,
+            phase: 'BREAK',
+            durationSeconds: Math.floor((now.getTime() - s.startedAt.getTime()) / 1000),
+          },
+        })
+      ))
+    }
+
     // Clamp pagination to prevent DoS via huge queries
     const take = Math.min(Math.max(parseInt(limit) || 10, 1), 100)    // 1–100
     const skip = Math.max(parseInt(offset) || 0, 0)                   // >= 0

@@ -107,8 +107,8 @@ export default function HistoryScreen() {
                 {formatDate(item.startedAt)}
               </Text>
               <Text style={styles.sessionDuration}>
-                {item.durationSeconds
-                  ? `${Math.round(item.durationSeconds / 60)} min`
+                {item.endedAt
+                  ? `${Math.max(1, Math.round((item.durationSeconds ?? 0) / 60))} min`
                   : 'In progress'}
               </Text>
             </View>
