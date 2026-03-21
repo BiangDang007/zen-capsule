@@ -27,20 +27,21 @@ export async function focusRoutes(app: FastifyInstance) {
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
 
     // Close any open session first (calculate duration to avoid stats being 0)
-    const now = new Date()
-    const openSessions = await prisma.focusSession.findMany({
-      where: { userId, endedAt: null },
-    })
-    for (const s of openSessions) {
-      const dur = Math.floor((now.getTime() - s.startedAt.getTime()) / 1000)
-      await prisma.focusSession.update({
-        where: { id: s.id },
-        data: { endedAt: now, phase: 'BREAK', durationSeconds: dur },
+    const session = await prisma.$transaction(async (tx) => {
+      const now = new Date()
+      const openSessions = await tx.focusSession.findMany({
+        where: { userId, endedAt: null },
       })
-    }
-
-    const session = await prisma.focusSession.create({
-      data: { userId, goal: body.data.goal, phase: 'FOCUS' },
+      for (const s of openSessions) {
+        const dur = Math.floor((now.getTime() - s.startedAt.getTime()) / 1000)
+        await tx.focusSession.update({
+          where: { id: s.id },
+          data: { endedAt: now, phase: 'BREAK', durationSeconds: dur },
+        })
+      }
+      return tx.focusSession.create({
+        data: { userId, goal: body.data.goal, phase: 'FOCUS' },
+      })
     })
 
     // Update sync state for all devices

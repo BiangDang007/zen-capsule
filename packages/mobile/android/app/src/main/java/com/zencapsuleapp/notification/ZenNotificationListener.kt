@@ -31,7 +31,12 @@ class ZenNotificationListener : NotificationListenerService() {
     companion object {
         private const val TAG = "ZenNotificationListener"
         private const val CHANNEL_ID = "zen_breakthrough"
-        private const val API_BASE = "http://10.0.2.2:3001/api/v1" // Emulator → localhost
+        private val API_BASE: String
+            get() = if (com.zencapsuleapp.BuildConfig.DEBUG) {
+                "http://10.0.2.2:3001/api/v1"
+            } else {
+                "https://api.zencapsule.com/api/v1"
+            }
 
         // System / own packages that must never be intercepted
         private val SKIP_PACKAGES = setOf(

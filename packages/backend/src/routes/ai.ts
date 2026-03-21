@@ -235,11 +235,13 @@ export async function aiRoutes(app: FastifyInstance) {
   // ── GET /ai/export ──────────────────────────────────
   // Export labelled training data as JSON
   // Only returns logs where userAction is recorded (ground truth exists)
-  app.get('/ai/export', auth, async (req, reply) => {
+  app.get('/ai/export', { ...auth, config: { rateLimit: { max: 5, timeWindow: '1 hour' } } }, async (req, reply) => {
     const userId = (req.user as { sub: string }).sub
 
     // Admin key via header (never in URL/query params for security)
     if (!verifyExportKey(req, reply)) return
+
+    req.log.info({ userId, action: 'DATA_EXPORT' }, 'Export accessed')
 
     const query = req.query as { limit?: string }
     const exportLimit = Math.min(Math.max(parseInt(query.limit ?? '5000') || 5000, 1), 10000) // cap at 10k rows
@@ -320,11 +322,13 @@ export async function aiRoutes(app: FastifyInstance) {
 
   // ── GET /ai/export/csv ──────────────────────────────
   // CSV format for Excel / pandas
-  app.get('/ai/export/csv', auth, async (req, reply) => {
+  app.get('/ai/export/csv', { ...auth, config: { rateLimit: { max: 5, timeWindow: '1 hour' } } }, async (req, reply) => {
     const userId = (req.user as { sub: string }).sub
 
     // Admin key via header (never in URL/query params for security)
     if (!verifyExportKey(req, reply)) return
+
+    req.log.info({ userId, action: 'DATA_EXPORT' }, 'Export accessed')
 
     const logs = await prisma.behaviorLog.findMany({
       where: { userId, userAction: { not: null } },

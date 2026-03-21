@@ -15,6 +15,9 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  plan          Plan      @default(FREE)
+  planExpiresAt DateTime?
+
   profile       Profile?
   sessions      Session[]
   focusSessions FocusSession[]
@@ -61,6 +64,9 @@ model Session {
   deviceId     String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // Registered devices for cross-device sync
@@ -73,6 +79,8 @@ model Device {
   pushToken String?  // for mobile push
   lastSeen  DateTime @default(now())
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // A single focus block (start → end)
@@ -87,6 +95,9 @@ model FocusSession {
   interceptCount   Int       @default(0)
   phase            Phase     @default(FOCUS)
   createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@index([userId, endedAt])
 }
 
 // Quick thoughts captured via Alt+S
@@ -97,6 +108,8 @@ model Thought {
   content   String
   sessionId String?
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Emergency firewall whitelist with relationship tags
@@ -109,6 +122,8 @@ model Whitelist {
   relationship SenderRelationship @default(other)
   priority     Int                @default(1)
   createdAt    DateTime           @default(now())
+
+  @@index([userId])
 }
 
 // App-level rules — block/allow entire apps without AI
@@ -122,6 +137,7 @@ model AppRule {
   createdAt   DateTime      @default(now())
 
   @@unique([userId, appName])
+  @@index([userId])
 }
 
 enum Phase {
@@ -196,4 +212,20 @@ enum UserAction {
   CONFIRMED_BLOCK
   MARKED_URGENT
   MARKED_NOT_URGENT
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String
+  email     String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+  @@index([email, createdAt])
 }

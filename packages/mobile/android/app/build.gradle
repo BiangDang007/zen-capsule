@@ -105,7 +105,8 @@ android {
                 keyAlias project.property('ZEN_RELEASE_KEY_ALIAS')
                 keyPassword project.property('ZEN_RELEASE_KEY_PASSWORD')
             } else {
-                // Fallback to debug for local dev builds
+                    // Debug builds use debug keystore; release builds without
+                // signing config will fail at assemble time (which is correct).
                 storeFile file('debug.keystore')
                 storePassword 'android'
                 keyAlias 'androiddebugkey'
@@ -118,6 +119,10 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // Warn if using debug key for release build
+            if (!project.hasProperty('ZEN_RELEASE_STORE_FILE')) {
+                println "\u26A0\uFE0F WARNING: Release build using debug keystore. Set ZEN_RELEASE_* in gradle.properties for production."
+            }
             signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             shrinkResources enableProguardInReleaseBuilds

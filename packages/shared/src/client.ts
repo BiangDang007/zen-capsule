@@ -9,6 +9,7 @@ import type {
   AppRule, AddAppRuleRequest,
   RegisterDeviceRequest, Device, SyncState,
   SessionReport,
+  BillingStatus,
 } from './api.js'
 
 export interface ApiClientConfig {
@@ -47,6 +48,9 @@ export interface ApiClient {
     registerDevice(data: RegisterDeviceRequest): Promise<{ device: Device }>
     devices(): Promise<{ devices: Device[] }>
     removeDevice(id: string): Promise<{ ok: true }>
+  }
+  billing: {
+    status(): Promise<BillingStatus>
   }
 }
 
@@ -115,6 +119,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       registerDevice: (data) => post(ENDPOINTS.SYNC_DEVICE, data),
       devices: () => request(ENDPOINTS.SYNC_DEVICES),
       removeDevice: (id) => del(`${ENDPOINTS.SYNC_DEVICE}/${id}`),
+    },
+    billing: {
+      status: () => request(ENDPOINTS.BILLING_STATUS),
     },
   }
 }

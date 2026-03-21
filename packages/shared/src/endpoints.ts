@@ -30,6 +30,9 @@ export const ENDPOINTS = {
   SYNC_STATE: '/sync/state',
   SYNC_DEVICES: '/sync/devices',
 
+  // Billing
+  BILLING_STATUS: '/billing/status',
+
   // Health
   HEALTH: '/health',
 } as const

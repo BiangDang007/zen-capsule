@@ -12,6 +12,8 @@ import { authRoutes } from './routes/auth.js'
 import { focusRoutes } from './routes/focus.js'
 import { aiRoutes } from './routes/ai.js'
 import { syncRoutes } from './routes/sync.js'
+import { billingRoutes } from './routes/billing.js'
+import { prisma } from './lib/prisma.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -30,6 +32,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 }
 
 const app = Fastify({
+  bodyLimit: 1024 * 100, // 100KB
   logger: {
     transport:
       process.env.NODE_ENV === 'development'
@@ -65,7 +68,7 @@ await app.register(cors, {
 })
 
 await app.register(jwt, {
-  secret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
+  secret: process.env.JWT_SECRET!,
 })
 
 await app.register(rateLimit, {
@@ -82,6 +85,7 @@ app.addHook('onSend', async (_request, reply) => {
   reply.header('X-Content-Type-Options', 'nosniff')
   reply.header('X-Frame-Options', 'DENY')
   reply.header('X-XSS-Protection', '0')  // modern browsers use CSP instead
+  reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'")
   if (process.env.NODE_ENV === 'production') {
     reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   }
@@ -92,6 +96,7 @@ await app.register(authRoutes, { prefix: '/api/v1' })
 await app.register(focusRoutes, { prefix: '/api/v1' })
 await app.register(aiRoutes, { prefix: '/api/v1' })
 await app.register(syncRoutes, { prefix: '/api/v1' })
+await app.register(billingRoutes, { prefix: '/api/v1' })
 
 // ── Global error handler (hide internals in production) ──
 app.setErrorHandler((error, request, reply) => {
@@ -120,11 +125,14 @@ app.setErrorHandler((error, request, reply) => {
 })
 
 // ── Health check ──────────────────────────────────────
-app.get('/health', async () => ({
-  status: 'ok',
-  version: '0.1.0',
-  timestamp: new Date().toISOString(),
-}))
+app.get('/health', async () => {
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1')
+    return { status: 'ok', db: 'connected', timestamp: new Date().toISOString() }
+  } catch {
+    return { status: 'degraded', db: 'disconnected', timestamp: new Date().toISOString() }
+  }
+})
 
 // ── Start ──────────────────────────────────────────────
 const port = parseInt(process.env.PORT ?? '3000')
@@ -134,6 +142,15 @@ try {
   console.log(`\n🧘 Zen Capsule running on http://localhost:${port}\n`)
   console.log(`   前端： http://localhost:${port}/`)
   console.log(`   API：  http://localhost:${port}/api/v1/\n`)
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    app.log.info('Shutting down gracefully...')
+    await app.close()
+    process.exit(0)
+  }
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 } catch (err) {
   app.log.error(err)
   process.exit(1)

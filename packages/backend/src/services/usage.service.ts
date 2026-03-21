@@ -1,13 +1,13 @@
 // src/services/usage.service.ts
-// Per-user daily Claude API usage tracking and enforcement
+// Per-user daily Claude API usage tracking and enforcement (plan-aware)
 import { prisma } from '../lib/prisma.js'
 
-export const DAILY_LIMITS = {
-  analyses:  300,  // Claude Haiku — urgency checks (Android fires these on every notification)
-  summaries: 20,   // Claude Sonnet — email batch summaries
+export const PLAN_LIMITS = {
+  FREE: { analyses: 30, summaries: 2 },
+  PRO:  { analyses: 500, summaries: 20 },
 } as const
 
-export type UsageType = keyof typeof DAILY_LIMITS
+export type UsageType = 'analyses' | 'summaries'
 
 export class LimitExceededError extends Error {
   constructor(public readonly type: UsageType, public readonly limit: number) {
@@ -17,23 +17,27 @@ export class LimitExceededError extends Error {
 }
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10) // "2024-01-15"
+  return new Date().toISOString().slice(0, 10)
 }
 
-/**
- * Atomically check-and-increment the daily counter for `type`.
- * Throws LimitExceededError if the limit would be exceeded.
- *
- * Uses a Prisma interactive transaction with serializable isolation
- * to prevent race conditions (two concurrent requests both reading
- * count=299 and both incrementing past the 300 limit).
- */
 export async function checkAndIncrement(userId: string, type: UsageType): Promise<void> {
   const date = todayKey()
-  const limit = DAILY_LIMITS[type]
 
   await prisma.$transaction(async (tx) => {
-    // Upsert inside the transaction
+    // Get user's plan
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { plan: true, planExpiresAt: true },
+    })
+
+    // Determine effective plan (check expiration)
+    let effectivePlan: 'FREE' | 'PRO' = 'FREE'
+    if (user?.plan === 'PRO' && user.planExpiresAt && user.planExpiresAt > new Date()) {
+      effectivePlan = 'PRO'
+    }
+
+    const limit = PLAN_LIMITS[effectivePlan][type]
+
     const record = await tx.dailyUsage.upsert({
       where: { userId_date: { userId, date } },
       create: { userId, date },
@@ -50,11 +54,10 @@ export async function checkAndIncrement(userId: string, type: UsageType): Promis
       data: { [type]: { increment: 1 } },
     })
   }, {
-    isolationLevel: 'Serializable', // prevents concurrent reads from both passing the check
+    isolationLevel: 'Serializable',
   })
 }
 
-/** Read today's counters for a user (used by /sync/state or a future dashboard). */
 export async function getTodayUsage(userId: string) {
   const date = todayKey()
   const record = await prisma.dailyUsage.findUnique({
@@ -62,4 +65,16 @@ export async function getTodayUsage(userId: string) {
     select: { analyses: true, summaries: true },
   })
   return record ?? { analyses: 0, summaries: 0 }
+}
+
+export async function getUserLimits(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, planExpiresAt: true },
+  })
+  let effectivePlan: 'FREE' | 'PRO' = 'FREE'
+  if (user?.plan === 'PRO' && user.planExpiresAt && user.planExpiresAt > new Date()) {
+    effectivePlan = 'PRO'
+  }
+  return { plan: effectivePlan, limits: PLAN_LIMITS[effectivePlan] }
 }

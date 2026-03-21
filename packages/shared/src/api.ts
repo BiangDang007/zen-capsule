@@ -146,6 +146,22 @@ export interface AddAppRuleRequest {
   action: AppRuleAction
 }
 
+// ── Billing ─────────────────────────────────────────
+export type Plan = 'FREE' | 'PRO'
+
+export interface BillingStatus {
+  plan: Plan
+  planExpiresAt: string | null
+  today: {
+    analyses: { used: number; limit: number }
+    summaries: { used: number; limit: number }
+  }
+  pricing: {
+    monthly: number
+    currency: string
+  }
+}
+
 // ── Session Report with logId for feedback ───────────
 
 export interface SessionReportEntryWithFeedback extends SessionReportEntry {

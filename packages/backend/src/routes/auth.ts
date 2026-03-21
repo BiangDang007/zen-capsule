@@ -15,42 +15,28 @@ const loginSchema = z.object({
   deviceId: z.string().max(200).optional(),
 })
 
-// ── In-memory login attempt tracker (per-IP) ──────────────────────
-// In production, this should be Redis-backed for multi-instance deployments.
-const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
+// ── DB-backed login attempt tracker (per-IP) ──────────────────────
 const MAX_LOGIN_ATTEMPTS = 10
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
 
-function checkLockout(ip: string): { locked: boolean; retryAfterSec?: number } {
-  const record = loginAttempts.get(ip)
-  if (!record) return { locked: false }
-
-  const elapsed = Date.now() - record.lastAttempt
-  if (record.count >= MAX_LOGIN_ATTEMPTS && elapsed < LOCKOUT_DURATION_MS) {
-    return { locked: true, retryAfterSec: Math.ceil((LOCKOUT_DURATION_MS - elapsed) / 1000) }
+async function checkLockout(ip: string): Promise<{ locked: boolean; retryAfterSec?: number }> {
+  const windowStart = new Date(Date.now() - LOCKOUT_DURATION_MS)
+  const recentFails = await prisma.loginAttempt.count({
+    where: { ip, success: false, createdAt: { gte: windowStart } },
+  })
+  if (recentFails >= MAX_LOGIN_ATTEMPTS) {
+    const oldest = await prisma.loginAttempt.findFirst({
+      where: { ip, success: false, createdAt: { gte: windowStart } },
+      orderBy: { createdAt: 'asc' },
+    })
+    const unlockAt = oldest ? oldest.createdAt.getTime() + LOCKOUT_DURATION_MS : Date.now() + LOCKOUT_DURATION_MS
+    return { locked: true, retryAfterSec: Math.ceil((unlockAt - Date.now()) / 1000) }
   }
-
-  // Reset after lockout window
-  if (elapsed >= LOCKOUT_DURATION_MS) {
-    loginAttempts.delete(ip)
-    return { locked: false }
-  }
-
   return { locked: false }
 }
 
-function recordFailedAttempt(ip: string): void {
-  const record = loginAttempts.get(ip)
-  if (record) {
-    record.count += 1
-    record.lastAttempt = Date.now()
-  } else {
-    loginAttempts.set(ip, { count: 1, lastAttempt: Date.now() })
-  }
-}
-
-function clearAttempts(ip: string): void {
-  loginAttempts.delete(ip)
+async function recordAttempt(ip: string, email: string, success: boolean): Promise<void> {
+  await prisma.loginAttempt.create({ data: { ip, email, success } })
 }
 
 export async function authRoutes(app: FastifyInstance) {
@@ -88,7 +74,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     // Check IP-based lockout
     const ip = req.ip
-    const lockout = checkLockout(ip)
+    const lockout = await checkLockout(ip)
     if (lockout.locked) {
       return reply.status(429).send({
         error: `Too many login attempts. Try again in ${lockout.retryAfterSec} seconds.`,
@@ -97,20 +83,24 @@ export async function authRoutes(app: FastifyInstance) {
 
     const user = await prisma.user.findUnique({ where: { email: body.data.email } })
     if (!user) {
-      recordFailedAttempt(ip)
+      await recordAttempt(ip, body.data.email, false)
       return reply.status(401).send({ error: 'Invalid credentials' })
     }
 
     const valid = await bcrypt.compare(body.data.password, user.passwordHash)
     if (!valid) {
-      recordFailedAttempt(ip)
+      await recordAttempt(ip, body.data.email, false)
       return reply.status(401).send({ error: 'Invalid credentials' })
     }
 
-    // Login success — clear attempts
-    clearAttempts(ip)
+    // Login success — record successful attempt
+    await recordAttempt(ip, body.data.email, true)
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, body.data.deviceId)
+
+    // Fire-and-forget cleanup (don't block the response)
+    cleanupExpiredSessions().catch(() => {})
+
     return reply.send({
       user: { id: user.id, email: user.email },
       accessToken,
@@ -119,7 +109,9 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   // ── POST /auth/refresh ──────────────────────────────
-  app.post('/auth/refresh', async (req, reply) => {
+  app.post('/auth/refresh', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const { refreshToken } = req.body as { refreshToken?: string }
     if (!refreshToken) return reply.status(400).send({ error: 'refreshToken required' })
 
@@ -142,6 +134,15 @@ export async function authRoutes(app: FastifyInstance) {
     }
     return reply.send({ ok: true })
   })
+
+  // ── Periodic cleanup: expired sessions ──────────────
+  // Clean up on each login (lightweight, avoids needing a cron job)
+  async function cleanupExpiredSessions() {
+    await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } })
+    // Also clean old login attempts (> 24h)
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    await prisma.loginAttempt.deleteMany({ where: { createdAt: { lt: dayAgo } } })
+  }
 }
 
 // ── Helpers ─────────────────────────────────────────────
