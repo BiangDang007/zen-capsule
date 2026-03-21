@@ -111,6 +111,13 @@ export default function SettingsScreen() {
   const [newAppName, setNewAppName] = useState('');
   const [newAppAction, setNewAppAction] = useState<AppRuleAction>('always_block');
 
+  // Account management
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePw, setDeletePw] = useState('');
+
   // Track whether the very first mount has finished so we can safely
   // call setState without racing against Fabric's initial commit.
   const hasMounted = useRef(false);
@@ -202,6 +209,39 @@ export default function SettingsScreen() {
       setAppRules(prev => prev.filter(r => r.id !== id));
     } catch (err: any) {
       Alert.alert('Error', err.message);
+    }
+  };
+
+  // ── Account management ──────────────────────────────────────────────────
+
+  const handleChangePassword = async () => {
+    if (!currentPw || newPw.length < 8) {
+      Alert.alert('錯誤', '新密碼至少 8 個字元');
+      return;
+    }
+    try {
+      await api.auth.changePassword({ currentPassword: currentPw, newPassword: newPw });
+      Alert.alert('成功', '密碼已變更，請重新登入');
+      setShowChangePassword(false);
+      setCurrentPw('');
+      setNewPw('');
+      signOut();
+    } catch (err: any) {
+      Alert.alert('錯誤', err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePw) {
+      Alert.alert('錯誤', '請輸入密碼');
+      return;
+    }
+    try {
+      await api.auth.deleteAccount({ password: deletePw });
+      Alert.alert('帳號已刪除', '你的帳號和所有資料已永久刪除');
+      signOut();
+    } catch (err: any) {
+      Alert.alert('錯誤', err.message);
     }
   };
 
@@ -410,6 +450,85 @@ export default function SettingsScreen() {
         ))}
         {appRules.length === 0 && (
           <Text style={styles.emptyText}>尚未設定 App 規則（所有 App 預設使用 AI 判斷）</Text>
+        )}
+      </View>
+
+      {/* Account Management */}
+      <Text style={styles.sectionTitle}>帳號管理</Text>
+
+      {/* Change Password */}
+      <View style={styles.card}>
+        {!showChangePassword ? (
+          <TouchableOpacity onPress={() => setShowChangePassword(true)}>
+            <Text style={styles.label}>變更密碼</Text>
+            <Text style={styles.hint}>定期變更密碼以保護帳號安全</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TextInput
+              style={styles.addInput}
+              placeholder="目前密碼"
+              placeholderTextColor="#A89880"
+              secureTextEntry
+              value={currentPw}
+              onChangeText={setCurrentPw}
+            />
+            <TextInput
+              style={[styles.addInput, { marginTop: 8 }]}
+              placeholder="新密碼（至少 8 字元）"
+              placeholderTextColor="#A89880"
+              secureTextEntry
+              value={newPw}
+              onChangeText={setNewPw}
+            />
+            <View style={{ flexDirection: 'row', marginTop: 10, gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.addButton, { flex: 1 }]}
+                onPress={handleChangePassword}>
+                <Text style={styles.addButtonText}>確認變更</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.addButton, { flex: 1, backgroundColor: '#F5EDE3' }]}
+                onPress={() => { setShowChangePassword(false); setCurrentPw(''); setNewPw(''); }}>
+                <Text style={[styles.addButtonText, { color: '#7A6652' }]}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </View>
+
+      {/* Delete Account */}
+      <View style={styles.card}>
+        {!showDeleteConfirm ? (
+          <TouchableOpacity onPress={() => setShowDeleteConfirm(true)}>
+            <Text style={[styles.label, { color: '#DC3545' }]}>刪除帳號</Text>
+            <Text style={styles.hint}>永久刪除帳號及所有資料（無法復原）</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <Text style={[styles.label, { color: '#DC3545', marginBottom: 8 }]}>確認刪除帳號</Text>
+            <Text style={[styles.hint, { marginBottom: 8 }]}>輸入密碼以確認刪除。此操作無法復原。</Text>
+            <TextInput
+              style={styles.addInput}
+              placeholder="輸入密碼確認"
+              placeholderTextColor="#A89880"
+              secureTextEntry
+              value={deletePw}
+              onChangeText={setDeletePw}
+            />
+            <View style={{ flexDirection: 'row', marginTop: 10, gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.signOutButton, { flex: 1 }]}
+                onPress={handleDeleteAccount}>
+                <Text style={styles.signOutText}>永久刪除</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.addButton, { flex: 1, backgroundColor: '#F5EDE3' }]}
+                onPress={() => { setShowDeleteConfirm(false); setDeletePw(''); }}>
+                <Text style={[styles.addButtonText, { color: '#7A6652' }]}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
       </View>
 

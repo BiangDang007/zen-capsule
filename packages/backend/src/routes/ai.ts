@@ -229,6 +229,7 @@ export async function aiRoutes(app: FastifyInstance) {
       },
     })
 
+    req.log.info({ userId, action: 'AI_FEEDBACK', logId: body.data.logId, userAction: body.data.userAction }, 'AI feedback submitted')
     return reply.send({ ok: true })
   })
 
@@ -405,6 +406,7 @@ export async function aiRoutes(app: FastifyInstance) {
         priority: body.data.priority ?? 1,
       },
     })
+    req.log.info({ userId, action: 'WHITELIST_ADD', name: body.data.name }, 'Whitelist entry added')
     return reply.status(201).send({ entry })
   })
 
@@ -414,6 +416,7 @@ export async function aiRoutes(app: FastifyInstance) {
     const entry = await prisma.whitelist.findFirst({ where: { id, userId } })
     if (!entry) return reply.status(404).send({ error: 'Not found' })
     await prisma.whitelist.delete({ where: { id } })
+    req.log.info({ userId, action: 'WHITELIST_REMOVE', entryId: id }, 'Whitelist entry removed')
     return reply.send({ ok: true })
   })
 
@@ -434,6 +437,7 @@ export async function aiRoutes(app: FastifyInstance) {
       create: { userId, appName: body.data.appName, packageName: body.data.packageName, action: body.data.action as any },
       update: { action: body.data.action as any, packageName: body.data.packageName },
     })
+    req.log.info({ userId, action: 'APP_RULE_ADD', appName: body.data.appName, ruleAction: body.data.action }, 'App rule added')
     return reply.status(201).send({ rule })
   })
 
@@ -443,6 +447,7 @@ export async function aiRoutes(app: FastifyInstance) {
     const rule = await prisma.appRule.findFirst({ where: { id, userId } })
     if (!rule) return reply.status(404).send({ error: 'Not found' })
     await prisma.appRule.delete({ where: { id } })
+    req.log.info({ userId, action: 'APP_RULE_REMOVE', ruleId: id }, 'App rule removed')
     return reply.send({ ok: true })
   })
 }

@@ -94,6 +94,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     // Login success — record successful attempt
     await recordAttempt(ip, body.data.email, true)
+    req.log.info({ userId: user.id, action: 'LOGIN', ip }, 'User logged in')
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, body.data.deviceId)
 
@@ -131,7 +132,62 @@ export async function authRoutes(app: FastifyInstance) {
     if (refreshToken) {
       await prisma.session.deleteMany({ where: { refreshToken } })
     }
+    const userId = (req.user as { sub: string }).sub
+    req.log.info({ userId, action: 'LOGOUT' }, 'User logged out')
     return reply.send({ ok: true })
+  })
+
+  // ── POST /auth/change-password ────────────────────
+  app.post('/auth/change-password', {
+    onRequest: [app.authenticate],
+    config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const schema = z.object({
+      currentPassword: z.string().max(128),
+      newPassword: z.string().min(8).max(128),
+    })
+    const body = schema.safeParse(req.body)
+    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
+
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) return reply.status(404).send({ error: 'User not found' })
+
+    const valid = await bcrypt.compare(body.data.currentPassword, user.passwordHash)
+    if (!valid) return reply.status(401).send({ error: 'Current password is incorrect' })
+
+    const passwordHash = await bcrypt.hash(body.data.newPassword, 12)
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } })
+
+    // Revoke all sessions (force re-login on all devices)
+    await prisma.session.deleteMany({ where: { userId } })
+
+    req.log.info({ userId, action: 'PASSWORD_CHANGED' }, 'Password changed')
+    return reply.send({ ok: true })
+  })
+
+  // ── DELETE /auth/account ──────────────────────────
+  // GDPR compliance + Google Play policy requirement
+  app.delete('/auth/account', {
+    onRequest: [app.authenticate],
+    config: { rateLimit: { max: 3, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const schema = z.object({ password: z.string().max(128) })
+    const body = schema.safeParse(req.body)
+    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
+
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) return reply.status(404).send({ error: 'User not found' })
+
+    const valid = await bcrypt.compare(body.data.password, user.passwordHash)
+    if (!valid) return reply.status(401).send({ error: 'Password is incorrect' })
+
+    // Cascade delete removes all related data (sessions, logs, whitelist, etc.)
+    await prisma.user.delete({ where: { id: userId } })
+
+    req.log.info({ userId, action: 'ACCOUNT_DELETED' }, 'Account deleted')
+    return reply.send({ ok: true, message: 'Account and all data permanently deleted' })
   })
 
   // ── Periodic cleanup: expired sessions ──────────────

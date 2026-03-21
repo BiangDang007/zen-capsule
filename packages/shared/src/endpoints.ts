@@ -6,6 +6,8 @@ export const ENDPOINTS = {
   AUTH_LOGIN: '/auth/login',
   AUTH_REFRESH: '/auth/refresh',
   AUTH_LOGOUT: '/auth/logout',
+  AUTH_CHANGE_PASSWORD: '/auth/change-password',
+  AUTH_DELETE_ACCOUNT: '/auth/account',
 
   // Focus
   FOCUS_START: '/focus/start',

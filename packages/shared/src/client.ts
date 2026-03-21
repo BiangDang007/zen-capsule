@@ -1,6 +1,7 @@
 import { API_PREFIX, ENDPOINTS } from './endpoints.js'
 import type {
   RegisterRequest, LoginRequest, AuthResponse,
+  ChangePasswordRequest, DeleteAccountRequest,
   StartFocusRequest, EndFocusRequest, FocusSession, FocusHistoryResponse,
   AnalyseRequest, AnalyseResponse, FeedbackRequest,
   EmailSummaryRequest, EmailSummaryResult,
@@ -22,6 +23,8 @@ export interface ApiClient {
     register(data: RegisterRequest): Promise<AuthResponse>
     refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }>
     logout(refreshToken?: string): Promise<{ ok: true }>
+    changePassword(data: ChangePasswordRequest): Promise<{ ok: true }>
+    deleteAccount(data: DeleteAccountRequest): Promise<{ ok: true; message: string }>
   }
   focus: {
     start(data: StartFocusRequest): Promise<{ session: FocusSession }>
@@ -85,6 +88,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       register: (data) => post(ENDPOINTS.AUTH_REGISTER, data),
       refresh: (refreshToken) => post(ENDPOINTS.AUTH_REFRESH, { refreshToken }),
       logout: (refreshToken) => post(ENDPOINTS.AUTH_LOGOUT, { refreshToken }),
+      changePassword: (data) => post(ENDPOINTS.AUTH_CHANGE_PASSWORD, data),
+      deleteAccount: (data) => request(ENDPOINTS.AUTH_DELETE_ACCOUNT, { method: 'DELETE', body: JSON.stringify(data) }),
     },
     focus: {
       start: (data) => post(ENDPOINTS.FOCUS_START, data),

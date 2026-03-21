@@ -19,6 +19,15 @@ export interface AuthResponse {
   refreshToken: string
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface DeleteAccountRequest {
+  password: string
+}
+
 // ── Focus ─────────────────────────────────────────────
 
 export interface StartFocusRequest {
