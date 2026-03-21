@@ -17,7 +17,7 @@ If you change any dependency version, add a new tool, or modify the environment 
 zen-capsule/                          # npm workspaces monorepo
 ├── packages/backend/                 # Fastify API + Prisma + PostgreSQL
 │   ├── src/index.ts                  # Server entry point
-│   ├── src/routes/                   # Route handlers (auth, focus, ai, sync)
+│   ├── src/routes/                   # Route handlers (auth, focus, ai, billing, sync)
 │   ├── src/services/                 # Business logic (urgency AI, usage tracking)
 │   ├── src/middleware/               # Auth middleware
 │   ├── src/lib/                      # Prisma client instance
@@ -31,8 +31,7 @@ zen-capsule/                          # npm workspaces monorepo
 │   └── android/                      # Native Android code (Kotlin)
 ├── packages/shared/                  # Shared types + API client
 │   └── src/                          # Types, endpoints, client factory
-├── packages/extension/               # Chrome Extension (Manifest V3)
-└── packages/desktop/                 # Electron Mac menu-bar app
+└── packages/extension/               # Chrome Extension (Manifest V3)
 ```
 
 ---

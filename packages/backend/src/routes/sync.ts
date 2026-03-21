@@ -4,31 +4,10 @@
 // MVP uses polling (GET /sync/state). WebSocket upgrade path included as comment.
 
 import { FastifyInstance } from 'fastify'
-import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-
-const registerDeviceSchema = z.object({
-  name: z.string().min(1).max(100),
-  platform: z.enum(['CHROME', 'IOS', 'ANDROID']),
-  pushToken: z.string().optional(),
-})
 
 export async function syncRoutes(app: FastifyInstance) {
   const auth = { onRequest: [app.authenticate] }
-
-  // ── POST /sync/device ───────────────────────────────
-  // Register a device (called on app install / extension load)
-  app.post('/sync/device', auth, async (req, reply) => {
-    const userId = (req.user as { sub: string }).sub
-    const body = registerDeviceSchema.safeParse(req.body)
-    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
-
-    const device = await prisma.device.create({
-      data: { userId, name: body.data.name ?? "Unknown", platform: (body.data.platform ?? "CHROME") as any, pushToken: body.data.pushToken },
-    })
-
-    return reply.status(201).send({ device })
-  })
 
   // ── GET /sync/state ─────────────────────────────────
   // Poll this every 10s from mobile to know current focus phase
@@ -39,13 +18,6 @@ export async function syncRoutes(app: FastifyInstance) {
     const activeSession = await prisma.focusSession.findFirst({
       where: { userId, endedAt: null },
       orderBy: { startedAt: 'desc' },
-    })
-
-    // Get recent thoughts (for mobile's break-time inbox)
-    const recentThoughts = await prisma.thought.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
     })
 
     // Today's stats
@@ -97,30 +69,7 @@ export async function syncRoutes(app: FastifyInstance) {
         sessionsCount: todaySessions.length,
         totalInterceptions,
       },
-      recentThoughts,
     })
-  })
-
-  // ── GET /sync/devices ───────────────────────────────
-  app.get('/sync/devices', auth, async (req, reply) => {
-    const userId = (req.user as { sub: string }).sub
-    const devices = await prisma.device.findMany({
-      where: { userId },
-      orderBy: { lastSeen: 'desc' },
-    })
-    return reply.send({ devices })
-  })
-
-  // ── DELETE /sync/device/:id ─────────────────────────
-  app.delete('/sync/device/:id', auth, async (req, reply) => {
-    const userId = (req.user as { sub: string }).sub
-    const { id } = req.params as { id: string }
-
-    const device = await prisma.device.findFirst({ where: { id, userId } })
-    if (!device) return reply.status(404).send({ error: 'Device not found' })
-
-    await prisma.device.delete({ where: { id } })
-    return reply.send({ ok: true })
   })
 }
 

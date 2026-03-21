@@ -56,7 +56,6 @@ export async function authRoutes(app: FastifyInstance) {
       data: {
         email: body.data.email,
         passwordHash,
-        profile: { create: {} }, // default profile
       },
       select: { id: true, email: true, createdAt: true },
     })

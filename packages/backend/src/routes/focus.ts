@@ -11,11 +11,6 @@ const endSchema = z.object({
   sessionId: z.string(),
 })
 
-const thoughtSchema = z.object({
-  content: z.string().min(1).max(1000),
-  sessionId: z.string().optional(),
-})
-
 export async function focusRoutes(app: FastifyInstance) {
   const auth = { onRequest: [app.authenticate] }
 
@@ -115,20 +110,6 @@ export async function focusRoutes(app: FastifyInstance) {
     return reply.send({ sessions, total, totalMinutes: Math.round(totalMinutes) })
   })
 
-  // ── POST /focus/thought ─────────────────────────────
-  // Alt+S quick capture
-  app.post('/focus/thought', auth, async (req, reply) => {
-    const userId = (req.user as { sub: string }).sub
-    const body = thoughtSchema.safeParse(req.body)
-    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
-
-    const thought = await prisma.thought.create({
-      data: { userId, content: body.data.content, sessionId: body.data.sessionId },
-    })
-
-    return reply.status(201).send({ thought })
-  })
-
   // ── GET /focus/session-report ───────────────────────
   // Break-time summary: all intercepted notifications grouped by AI category
   app.get('/focus/session-report', auth, async (req, reply) => {
@@ -220,24 +201,6 @@ export async function focusRoutes(app: FastifyInstance) {
     })
   })
 
-  // ── GET /focus/thoughts ─────────────────────────────
-  app.get('/focus/thoughts', auth, async (req, reply) => {
-    const userId = (req.user as { sub: string }).sub
-    const { limit = '50', offset = '0' } = req.query as Record<string, string>
-
-    const take = Math.min(Math.max(parseInt(limit) || 50, 1), 100)
-    const skip = Math.max(parseInt(offset) || 0, 0)
-
-    const thoughts = await prisma.thought.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take,
-      skip,
-    })
-
-    const total = await prisma.thought.count({ where: { userId } })
-    return reply.send({ thoughts, total })
-  })
 }
 
 // Upsert a simple sync state record (reuses Device table's lastSeen)

@@ -11,8 +11,6 @@ export const ENDPOINTS = {
   FOCUS_START: '/focus/start',
   FOCUS_END: '/focus/end',
   FOCUS_HISTORY: '/focus/history',
-  FOCUS_THOUGHT: '/focus/thought',
-  FOCUS_THOUGHTS: '/focus/thoughts',
   FOCUS_SESSION_REPORT: '/focus/session-report',
 
   // AI
@@ -26,9 +24,7 @@ export const ENDPOINTS = {
   AI_APP_RULES: '/ai/app-rules',
 
   // Sync
-  SYNC_DEVICE: '/sync/device',
   SYNC_STATE: '/sync/state',
-  SYNC_DEVICES: '/sync/devices',
 
   // Billing
   BILLING_STATUS: '/billing/status',

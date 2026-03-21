@@ -1,4 +1,4 @@
-import type { Phase, Platform, AiCategory, UserAction } from './enums.js'
+import type { Phase, AiCategory, UserAction } from './enums.js'
 
 // ── Auth ──────────────────────────────────────────────
 
@@ -37,13 +37,6 @@ export interface FocusSession {
   durationSeconds?: number | null
   interceptCount: number
   phase: Phase
-}
-
-export interface Thought {
-  id: string
-  content: string
-  sessionId?: string | null
-  createdAt: string
 }
 
 export interface FocusHistoryResponse {
@@ -172,20 +165,6 @@ export interface SessionReportEntryWithFeedback extends SessionReportEntry {
 
 // ── Sync ──────────────────────────────────────────────
 
-export interface RegisterDeviceRequest {
-  name: string
-  platform: Platform
-  pushToken?: string
-}
-
-export interface Device {
-  id: string
-  name: string
-  platform: Platform
-  pushToken?: string | null
-  lastSeen: string
-}
-
 // ── Session Report (break-time notification summary) ──
 
 export interface SessionReportEntry {
@@ -241,5 +220,4 @@ export interface SyncState {
     sessionsCount: number
     totalInterceptions: number
   }
-  recentThoughts: Thought[]
 }

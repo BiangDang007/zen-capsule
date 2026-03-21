@@ -2,12 +2,11 @@ import { API_PREFIX, ENDPOINTS } from './endpoints.js'
 import type {
   RegisterRequest, LoginRequest, AuthResponse,
   StartFocusRequest, EndFocusRequest, FocusSession, FocusHistoryResponse,
-  Thought,
   AnalyseRequest, AnalyseResponse, FeedbackRequest,
   EmailSummaryRequest, EmailSummaryResult,
   WhitelistEntry, AddWhitelistRequest,
   AppRule, AddAppRuleRequest,
-  RegisterDeviceRequest, Device, SyncState,
+  SyncState,
   SessionReport,
   BillingStatus,
 } from './api.js'
@@ -28,8 +27,6 @@ export interface ApiClient {
     start(data: StartFocusRequest): Promise<{ session: FocusSession }>
     end(data: EndFocusRequest): Promise<{ session: FocusSession }>
     history(limit?: number, offset?: number): Promise<FocusHistoryResponse>
-    addThought(content: string, sessionId?: string): Promise<{ thought: Thought }>
-    thoughts(): Promise<{ thoughts: Thought[] }>
     sessionReport(sessionId?: string): Promise<SessionReport>
   }
   ai: {
@@ -45,9 +42,6 @@ export interface ApiClient {
   }
   sync: {
     state(): Promise<SyncState>
-    registerDevice(data: RegisterDeviceRequest): Promise<{ device: Device }>
-    devices(): Promise<{ devices: Device[] }>
-    removeDevice(id: string): Promise<{ ok: true }>
   }
   billing: {
     status(): Promise<BillingStatus>
@@ -97,9 +91,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       end: (data) => post(ENDPOINTS.FOCUS_END, data),
       history: (limit = 10, offset = 0) =>
         request(`${ENDPOINTS.FOCUS_HISTORY}?limit=${limit}&offset=${offset}`),
-      addThought: (content, sessionId) =>
-        post(ENDPOINTS.FOCUS_THOUGHT, { content, sessionId }),
-      thoughts: () => request(ENDPOINTS.FOCUS_THOUGHTS),
       sessionReport: (sessionId?) =>
         request(`${ENDPOINTS.FOCUS_SESSION_REPORT}${sessionId ? `?sessionId=${sessionId}` : ''}`),
     },
@@ -116,9 +107,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     },
     sync: {
       state: () => request(ENDPOINTS.SYNC_STATE),
-      registerDevice: (data) => post(ENDPOINTS.SYNC_DEVICE, data),
-      devices: () => request(ENDPOINTS.SYNC_DEVICES),
-      removeDevice: (id) => del(`${ENDPOINTS.SYNC_DEVICE}/${id}`),
     },
     billing: {
       status: () => request(ENDPOINTS.BILLING_STATUS),
