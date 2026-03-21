@@ -52,6 +52,10 @@ zen-capsule/                          # npm workspaces monorepo
 | **Whitelist + Relationships** | Tag senders as boss/client/family/friend/coworker for score boosting |
 | **App Rules** | Block/allow entire apps (Shopee, Instagram) without AI, saving API calls |
 | **Freemium Billing** | FREE: 30 analyses/day, PRO ($4.99/mo): 500 analyses/day |
+| **Password Change** | Change password from Settings, revokes all sessions |
+| **Account Deletion** | GDPR-compliant permanent data deletion |
+| **Error Boundary** | Catches any screen crash, shows retry UI instead of full app crash |
+| **Audit Logging** | Logs login, logout, whitelist/app-rule changes, feedback |
 
 ### Security Features
 
@@ -146,6 +150,8 @@ cd packages/mobile && npx react-native run-android
 | POST | /auth/login | - | Login (DB-backed lockout) |
 | POST | /auth/refresh | - | Rotate tokens (10/min limit) |
 | POST | /auth/logout | JWT | Revoke session |
+| POST | /auth/change-password | JWT | Change password (revokes all sessions) |
+| DELETE | /auth/account | JWT | Delete account + all data (GDPR) |
 | POST | /focus/start | JWT | Start focus (transaction-safe) |
 | POST | /focus/end | JWT | End focus session |
 | GET | /focus/history | JWT | Paginated history |
