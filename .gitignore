@@ -5,3 +5,8 @@ dist/
 *.tsbuildinfo
 .claude/
 .vscode
+
+# Android build artifacts
+packages/mobile/android/app/src/main/assets/
+packages/mobile/android/app/src/main/res/drawable-*/node_modules_*
+packages/mobile/android/app/src/main/res/raw/keep.xml
