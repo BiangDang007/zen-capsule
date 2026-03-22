@@ -13,6 +13,30 @@ import BreakReportScreen from '../screens/BreakReportScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const HistoryStack = createNativeStackNavigator();
+
+// History tab has its own stack: list → detail (break report)
+function HistoryStackScreen() {
+  return (
+    <HistoryStack.Navigator>
+      <HistoryStack.Screen
+        name="HistoryList"
+        component={HistoryScreen}
+        options={{ headerShown: false }}
+      />
+      <HistoryStack.Screen
+        name="SessionDetail"
+        component={BreakReportScreen}
+        options={{
+          title: '攔截報告',
+          headerStyle: { backgroundColor: '#FFF5EB' },
+          headerTintColor: '#E8712A',
+          headerTitleStyle: { color: '#2D1B0E' },
+        }}
+      />
+    </HistoryStack.Navigator>
+  );
+}
 
 function MainTabs() {
   return (
@@ -42,23 +66,13 @@ function MainTabs() {
       />
       <Tab.Screen
         name="History"
-        component={HistoryScreen}
+        component={HistoryStackScreen}
         options={{
           title: 'History',
           headerTitle: 'Session History',
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <TabIcon label="📊" color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Messages"
-        component={BreakReportScreen}
-        options={{
-          title: 'Messages',
-          headerTitle: '📬 休息時間',
-          tabBarIcon: ({ color }) => (
-            <TabIcon label="📬" color={color} />
           ),
         }}
       />

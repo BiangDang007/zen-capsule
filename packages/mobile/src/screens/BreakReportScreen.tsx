@@ -8,7 +8,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { api, tryRefreshToken } from '../services/api';
 import type {
   SessionReport,
@@ -29,6 +29,10 @@ const SECTIONS = [
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function BreakReportScreen() {
+  // Accept sessionId from navigation params (when opened from History)
+  const route = useRoute<any>()
+  const routeSessionId = route.params?.sessionId as string | undefined
+
   const [report, setReport] = useState<SessionReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -38,7 +42,7 @@ export default function BreakReportScreen() {
     normal: false,
     social: false,
   })
-  // Track the list of completed sessions for browsing
+  // Track the list of completed sessions for browsing (only when no routeSessionId)
   const [sessionList, setSessionList] = useState<{ id: string; goal: string; startedAt: string }[]>([])
   const [currentSessionIdx, setCurrentSessionIdx] = useState(0)
   // Track which entries have received feedback
@@ -96,9 +100,14 @@ export default function BreakReportScreen() {
       setLoading(true)
       setCurrentSessionIdx(0)
       setFeedbackSent({})
-      // Fetch report first (may auto-close orphaned sessions), then refresh session list
-      fetchReport().then(() => fetchSessionList())
-    }, [fetchReport, fetchSessionList])
+      if (routeSessionId) {
+        // Opened from History → load specific session, no session list browsing
+        fetchReport(routeSessionId)
+      } else {
+        // Standalone tab → load latest, enable session browsing
+        fetchReport().then(() => fetchSessionList())
+      }
+    }, [fetchReport, fetchSessionList, routeSessionId])
   )
 
   const onRefresh = () => {
