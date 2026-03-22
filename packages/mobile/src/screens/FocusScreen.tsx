@@ -142,19 +142,24 @@ export default function FocusScreen() {
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
 
-    // Activate native notification interception
+    // Start session via API FIRST — this triggers auto-refresh in api.ts
+    // if the access token is expired, ensuring AsyncStorage has fresh tokens
+    // before we pass them to the Kotlin NotificationListener.
+    let newSessionId: string | null = null;
+    try {
+      const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
+      newSessionId = session.id;
+      setSessionId(session.id);
+    } catch {
+      // Offline mode: still run timer locally
+    }
+
+    // Now read (possibly refreshed) tokens and pass to Kotlin layer
     const token = await AsyncStorage.getItem('zen_capsule_token');
     const refresh = await AsyncStorage.getItem('zen_capsule_refresh');
     if (token) setAuthToken(token);
     if (refresh) setRefreshToken(refresh);
     setFocusMode(true);
-
-    try {
-      const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
-      setSessionId(session.id);
-    } catch {
-      // Offline mode: still run timer locally
-    }
   };
 
   const stopFocus = () => {
