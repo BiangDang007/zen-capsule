@@ -250,7 +250,7 @@ export default function FocusScreen() {
                 ref={customInputRef}
                 style={styles.customInput}
                 placeholder="1–480"
-                placeholderTextColor="#887766"
+                placeholderTextColor="#A89880"
                 keyboardType="number-pad"
                 maxLength={3}
                 value={customInput}
@@ -287,7 +287,7 @@ export default function FocusScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
@@ -296,16 +296,16 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderWidth: 3,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
   },
   timerCircleActive: {
-    borderColor: '#FF9F43',
-    shadowColor: '#FF9F43',
+    borderColor: '#E8712A',
+    shadowColor: '#E8712A',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
@@ -314,12 +314,12 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 48,
     fontWeight: '300',
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     fontVariant: ['tabular-nums'],
   },
   progressText: {
     fontSize: 12,
-    color: '#AA9080',
+    color: '#7A6652',
     marginTop: 4,
   },
   presetRow: {
@@ -331,22 +331,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
     margin: 5,
   },
   presetButtonActive: {
-    backgroundColor: '#FF9F4322',
-    borderColor: '#FF9F43',
+    backgroundColor: '#E8712A18',
+    borderColor: '#E8712A',
   },
   presetText: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 16,
     fontWeight: '500',
   },
   presetTextActive: {
-    color: '#FF9F43',
+    color: '#E8712A',
   },
   customRow: {
     flexDirection: 'row',
@@ -358,15 +358,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderWidth: 1,
-    borderColor: '#FF9F43',
-    color: '#FFF0E0',
+    borderColor: '#E8712A',
+    color: '#2D1B0E',
     fontSize: 18,
     textAlign: 'center',
   },
   customUnit: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 16,
     marginHorizontal: 8,
   },
@@ -374,15 +374,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#FF9F43',
+    backgroundColor: '#E8712A',
   },
   customConfirmText: {
-    color: '#FFF5EB',
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 15,
   },
   mainButton: {
-    backgroundColor: '#FF9F43',
+    backgroundColor: '#E8712A',
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 48,
@@ -390,15 +390,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   stopButton: {
-    backgroundColor: '#FF6348',
+    backgroundColor: '#DC3545',
   },
   mainButtonText: {
-    color: '#FFF5EB',
+    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
   },
   statusText: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 14,
     textAlign: 'center',
   },

@@ -78,20 +78,21 @@ const toggleStyles = StyleSheet.create({
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#4A3828',
+    backgroundColor: '#E8D5C0',
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
   trackActive: {
-    backgroundColor: '#FF9F4388',
+    backgroundColor: '#E8712A55',
   },
   thumb: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#FF9F43',
+    backgroundColor: '#E8712A',
   },
 });
+
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -291,7 +292,7 @@ export default function SettingsScreen() {
         <TextInput
           style={styles.addInput}
           placeholder="名稱（如：張經理）"
-          placeholderTextColor="#887766"
+          placeholderTextColor="#A89880"
           value={newSenderName}
           onChangeText={setNewSenderName}
         />
@@ -299,7 +300,7 @@ export default function SettingsScreen() {
         <TextInput
           style={[styles.addInput, { marginTop: 8 }]}
           placeholder="聯絡方式（email 或電話）"
-          placeholderTextColor="#887766"
+          placeholderTextColor="#A89880"
           value={newSenderContact}
           onChangeText={setNewSenderContact}
           autoCapitalize="none"
@@ -386,7 +387,7 @@ export default function SettingsScreen() {
         <TextInput
           style={styles.addInput}
           placeholder="App 名稱（如：Shopee, Instagram）"
-          placeholderTextColor="#887766"
+          placeholderTextColor="#A89880"
           value={newAppName}
           onChangeText={setNewAppName}
         />
@@ -549,12 +550,12 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
     paddingHorizontal: 16,
     paddingTop: 16,
   },
   sectionTitle: {
-    color: '#FF9F43',
+    color: '#E8712A',
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -563,16 +564,16 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   sectionDesc: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 12,
     marginBottom: 8,
   },
   card: {
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
     marginBottom: 8,
   },
   row: {
@@ -585,43 +586,43 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   label: {
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     fontSize: 16,
   },
   value: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 14,
     marginTop: 4,
   },
   hint: {
-    color: '#887766',
+    color: '#A89880',
     fontSize: 12,
     marginTop: 2,
   },
   addInput: {
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     fontSize: 14,
   },
   addButton: {
-    backgroundColor: '#FF9F43',
+    backgroundColor: '#E8712A',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   addButtonText: {
-    color: '#1A1410',
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 14,
   },
 
   // Chip selector
   chipLabel: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 12,
     marginTop: 10,
     marginBottom: 6,
@@ -634,27 +635,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
     margin: 3,
   },
   chipActive: {
-    backgroundColor: '#FF9F4322',
-    borderColor: '#FF9F43',
+    backgroundColor: '#E8712A18',
+    borderColor: '#E8712A',
   },
   chipText: {
-    color: '#887766',
+    color: '#A89880',
     fontSize: 13,
   },
   chipTextActive: {
-    color: '#FF9F43',
+    color: '#E8712A',
     fontWeight: '600',
   },
 
   // Action description
   actionDesc: {
-    color: '#887766',
+    color: '#A89880',
     fontSize: 11,
     fontStyle: 'italic',
     marginTop: 6,
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#4A3828',
+    borderTopColor: '#E8D5C0',
     marginTop: 8,
   },
   whitelistInfo: {
@@ -675,7 +676,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   whitelistSender: {
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -685,7 +686,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   whitelistContact: {
-    color: '#887766',
+    color: '#A89880',
     fontSize: 12,
     marginLeft: 8,
   },
@@ -693,10 +694,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
-    backgroundColor: '#FF9F4322',
+    backgroundColor: '#E8712A18',
   },
   relationBadgeText: {
-    color: '#FF9F43',
+    color: '#E8712A',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -707,35 +708,35 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
   },
-  actionBadgeBlock: { backgroundColor: '#FF634822' },
-  actionBadgeAllow: { backgroundColor: '#2ECC7122' },
-  actionBadgeAi: { backgroundColor: '#FF9F4322' },
+  actionBadgeBlock: { backgroundColor: '#DC354518' },
+  actionBadgeAllow: { backgroundColor: '#28A74518' },
+  actionBadgeAi: { backgroundColor: '#E8712A18' },
   actionBadgeText: { fontSize: 11, fontWeight: '600' },
-  actionBadgeTextBlock: { color: '#FF6348' },
-  actionBadgeTextAllow: { color: '#2ECC71' },
-  actionBadgeTextAi: { color: '#FF9F43' },
+  actionBadgeTextBlock: { color: '#DC3545' },
+  actionBadgeTextAllow: { color: '#28A745' },
+  actionBadgeTextAi: { color: '#E8712A' },
 
   removeText: {
-    color: '#FF6348',
+    color: '#DC3545',
     fontSize: 13,
   },
   emptyText: {
-    color: '#887766',
+    color: '#A89880',
     fontSize: 13,
     fontStyle: 'italic',
     marginTop: 8,
   },
   signOutButton: {
     marginTop: 32,
-    backgroundColor: '#FF634822',
+    backgroundColor: '#DC354518',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FF634844',
+    borderColor: '#DC354530',
   },
   signOutText: {
-    color: '#FF6348',
+    color: '#DC3545',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -744,7 +745,7 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   version: {
-    color: '#665544',
+    color: '#C4B098',
     fontSize: 12,
   },
 });

@@ -20,10 +20,10 @@ import type {
 // ── Section config ─────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { key: 'critical' as const, label: '🔴 緊急', color: '#FF6348' },
-  { key: 'important' as const, label: '🟡 重要', color: '#FFA502' },
-  { key: 'normal' as const, label: '🟠 普通', color: '#FF9F43' },
-  { key: 'social' as const, label: '💬 社群', color: '#2ECC71' },
+  { key: 'critical' as const, label: '🔴 緊急', color: '#DC3545' },
+  { key: 'important' as const, label: '🟡 重要', color: '#E8912A' },
+  { key: 'normal' as const, label: '🟠 普通', color: '#E8712A' },
+  { key: 'social' as const, label: '💬 社群', color: '#28A745' },
 ]
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ export default function BreakReportScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#FF9F43" />
+        <ActivityIndicator size="large" color="#E8712A" />
       </View>
     )
   }
@@ -164,7 +164,7 @@ export default function BreakReportScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF9F43" />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8712A" />
       }
       data={SECTIONS}
       keyExtractor={item => item.key}
@@ -337,27 +337,27 @@ function formatRelativeTime(iso: string): string {
 // ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A1410' },
+  container: { flex: 1, backgroundColor: '#FFF5EB' },
   content: { paddingBottom: 32 },
   centered: {
-    flex: 1, backgroundColor: '#1A1410',
+    flex: 1, backgroundColor: '#FFF5EB',
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
   },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { color: '#FFF0E0', fontSize: 18, fontWeight: '500' },
-  emptySubtext: { color: '#AA9080', fontSize: 14, marginTop: 6, textAlign: 'center' },
+  emptyText: { color: '#2D1B0E', fontSize: 18, fontWeight: '500' },
+  emptySubtext: { color: '#7A6652', fontSize: 14, marginTop: 6, textAlign: 'center' },
 
   // Banner
   banner: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
   },
-  bannerGoal: { color: '#FFF0E0', fontSize: 16, fontWeight: '600' },
-  bannerMeta: { color: '#AA9080', fontSize: 13, marginTop: 4 },
+  bannerGoal: { color: '#2D1B0E', fontSize: 16, fontWeight: '600' },
+  bannerMeta: { color: '#7A6652', fontSize: 13, marginTop: 4 },
   sessionNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -365,29 +365,29 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#4A3828',
+    borderTopColor: '#E8D5C0',
   },
   navBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#4A3828',
+    backgroundColor: '#E8D5C0',
   },
   navBtnDisabled: { opacity: 0.3 },
-  navBtnText: { color: '#FF9F43', fontSize: 13, fontWeight: '600' },
-  navIndicator: { color: '#AA9080', fontSize: 12 },
+  navBtnText: { color: '#E8712A', fontSize: 13, fontWeight: '600' },
+  navIndicator: { color: '#7A6652', fontSize: 12 },
 
   // Ads strip
   adsStrip: {
     marginHorizontal: 16,
     marginBottom: 8,
     padding: 10,
-    backgroundColor: '#1A1210',
+    backgroundColor: '#F5EDE3',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#332211',
+    borderColor: '#E0D0C0',
   },
-  adsText: { color: '#AA8866', fontSize: 13 },
+  adsText: { color: '#8B7355', fontSize: 13 },
 
   // Section
   section: { marginHorizontal: 16, marginBottom: 12 },
@@ -398,52 +398,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   sectionLabel: { fontSize: 15, fontWeight: '700', flex: 1 },
-  sectionCount: { color: '#AA9080', fontSize: 13, marginRight: 8 },
+  sectionCount: { color: '#7A6652', fontSize: 13, marginRight: 8 },
   chevron: { fontSize: 11 },
 
   // Entry card
   entryCard: {
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderRadius: 12,
     padding: 12,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
   },
   entryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  entryApp: { color: '#FF9F43', fontSize: 12, fontWeight: '600' },
-  entryTime: { color: '#887766', fontSize: 12 },
-  entrySender: { color: '#CCAA88', fontSize: 13, marginBottom: 2 },
-  entrySubject: { color: '#FFF0E0', fontSize: 14, fontWeight: '500' },
-  entryPreview: { color: '#AA9080', fontSize: 13, marginTop: 3 },
+  entryApp: { color: '#E8712A', fontSize: 12, fontWeight: '600' },
+  entryTime: { color: '#A89880', fontSize: 12 },
+  entrySender: { color: '#8B7355', fontSize: 13, marginBottom: 2 },
+  entrySubject: { color: '#2D1B0E', fontSize: 14, fontWeight: '500' },
+  entryPreview: { color: '#7A6652', fontSize: 13, marginTop: 3 },
 
   // AI reason
   aiReason: {
-    color: '#CCAA88',
+    color: '#8B7355',
     fontSize: 12,
     fontStyle: 'italic',
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#3D2E22',
+    borderTopColor: '#F0E0D0',
   },
 
   breakthroughBadge: {
     marginTop: 6, alignSelf: 'flex-start',
     paddingHorizontal: 8, paddingVertical: 2,
-    backgroundColor: '#FF634822', borderRadius: 6,
+    backgroundColor: '#DC354518', borderRadius: 6,
   },
-  breakthroughText: { color: '#FF6348', fontSize: 11, fontWeight: '600' },
+  breakthroughText: { color: '#DC3545', fontSize: 11, fontWeight: '600' },
 
   // Feedback
   feedbackRow: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#3D2E22',
+    borderTopColor: '#F0E0D0',
   },
   feedbackLabel: {
-    color: '#887766',
+    color: '#A89880',
     fontSize: 12,
     marginBottom: 6,
   },
@@ -452,31 +452,31 @@ const styles = StyleSheet.create({
   },
   fbBtnCorrect: {
     flex: 1,
-    backgroundColor: '#2ECC7122',
+    backgroundColor: '#28A74518',
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2ECC7144',
+    borderColor: '#28A74530',
     marginRight: 4,
   },
   fbBtnCorrectText: {
-    color: '#2ECC71',
+    color: '#28A745',
     fontSize: 13,
     fontWeight: '600',
   },
   fbBtnWrong: {
     flex: 1,
-    backgroundColor: '#FF634822',
+    backgroundColor: '#DC354518',
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FF634844',
+    borderColor: '#DC354530',
     marginLeft: 4,
   },
   fbBtnWrongText: {
-    color: '#FF6348',
+    color: '#DC3545',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   feedbackSentText: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 12,
     fontWeight: '500',
   },

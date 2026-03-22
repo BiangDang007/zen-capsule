@@ -1,46 +1,45 @@
-// Zen Capsule — Warm Dark Theme
-// All color constants are defined here. Never hardcode colors in components.
+// Zen Capsule — Warm Cream + Claude Orange Theme
+// Inspired by vintage/Focus Tomato aesthetic with Claude's signature orange
+// All color constants are defined here.
 
-export const Colors = {
+export const C = {
   // ── Backgrounds ──────────────────────────────────
-  bg:           '#1A1410',   // main dark warm brown
-  bgCard:       '#2A2018',   // card / input surface
-  bgElevated:   '#352A20',   // elevated surfaces (modals, tooltips)
+  bg:           '#FFF5EB',   // warm cream main background
+  bgCard:       '#FFF0E0',   // card surface (slightly warmer)
+  bgElevated:   '#FFE8D0',   // elevated surfaces (modals)
+  bgDark:       '#2D1B0E',   // dark brown (for contrast sections)
 
   // ── Borders ──────────────────────────────────────
-  border:       '#4A3828',   // standard border
-  borderLight:  '#3D2E22',   // subtle separator
+  border:       '#E8D5C0',   // standard border
+  borderLight:  '#F0E0D0',   // subtle separator
+  borderDark:   '#D4B896',   // stronger border
 
-  // ── Primary Accent (warm amber) ──────────────────
-  primary:      '#FF9F43',   // buttons, links, active states
-  primaryFaded: '#FF9F4322', // low-opacity highlight
-  primaryMid:   '#FF9F4388', // medium-opacity (switch track)
+  // ── Primary Accent (Claude Orange) ────────────────
+  primary:      '#E8712A',   // Claude orange — buttons, links, active
+  primaryDark:  '#C85A1A',   // darker orange for pressed states
+  primaryFaded: '#E8712A18', // low-opacity highlight
+  primaryMid:   '#E8712A55', // medium-opacity (switch track)
+  primaryLight: '#FFEEDD',   // light orange tint bg
 
   // ── Text ─────────────────────────────────────────
-  textPrimary:   '#FFF0E0',  // main text
-  textSecondary: '#AA9080',  // muted / subtitle
-  textHint:      '#887766',  // placeholder, hint
-  textInactive:  '#665544',  // disabled / inactive tab
-  textWhite:     '#FFF5EB',  // high-contrast white-ish
-  textMedium:    '#CCAA88',  // medium emphasis
+  textPrimary:   '#2D1B0E',  // dark brown — main text
+  textSecondary: '#7A6652',  // medium brown — subtitle
+  textHint:      '#A89880',  // placeholder, hint
+  textInactive:  '#C4B098',  // disabled / inactive tab
+  textWhite:     '#FFF5EB',  // white text on dark bg
+  textOnPrimary: '#FFFFFF',  // white text on orange buttons
 
   // ── Status / Category ────────────────────────────
-  critical:     '#FF6348',   // error, critical, destructive
-  criticalFaded:'#FF634822', // low-opacity critical bg
-  criticalBorder:'#FF634844',// critical border with alpha
-  warning:      '#FFA502',   // important / warning
-  success:      '#2ECC71',   // completed, social
-  successFaded: '#2ECC7122', // low-opacity success bg
-
-  // ── Ads section ──────────────────────────────────
-  adsBg:        '#1A1210',   // ads strip background
-  adsBorder:    '#332211',   // ads border
-  adsText:      '#AA8866',   // ads text
+  critical:       '#DC3545',  // error, critical
+  criticalFaded:  '#DC354518',
+  criticalBorder: '#DC354530',
+  warning:        '#E8912A',  // important / warning
+  success:        '#28A745',  // completed, social
+  successFaded:   '#28A74518',
+  successBorder:  '#28A74530',
 
   // ── Misc ─────────────────────────────────────────
-  tabBarBorder: '#2A2018',   // bottom tab bar top border
-  switchThumbOff: '#665544', // switch thumb when disabled
-  transparent:  'transparent',
+  tabBarBg:     '#FFF5EB',
+  tabBarBorder: '#E8D5C0',
+  overlay:      '#2D1B0E88', // dark overlay for modals
 } as const
-
-export type ColorKey = keyof typeof Colors

@@ -57,7 +57,7 @@ export default function HistoryScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#FF9F43" />
+        <ActivityIndicator size="large" color="#E8712A" />
       </View>
     );
   }
@@ -88,7 +88,7 @@ export default function HistoryScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#FF9F43"
+            tintColor="#E8712A"
           />
         }
         ListEmptyComponent={
@@ -131,12 +131,12 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
     paddingTop: 16,
   },
   centered: {
     flex: 1,
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -147,32 +147,32 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
     marginHorizontal: 6,
   },
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FF9F43',
+    color: '#E8712A',
   },
   statLabel: {
     fontSize: 12,
-    color: '#AA9080',
+    color: '#7A6652',
     marginTop: 4,
   },
   sessionCard: {
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
   },
   sessionRow: {
     flexDirection: 'row',
@@ -180,11 +180,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sessionDate: {
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     fontSize: 14,
   },
   sessionDuration: {
-    color: '#FF9F43',
+    color: '#E8712A',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -198,11 +198,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#2ECC7122',
   },
   badgeActive: {
-    backgroundColor: '#FF9F4322',
+    backgroundColor: '#E8712A18',
   },
   statusText: {
     fontSize: 12,
-    color: '#AA9080',
+    color: '#7A6652',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -213,12 +213,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyText: {
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     fontSize: 18,
     fontWeight: '500',
   },
   emptySubtext: {
-    color: '#AA9080',
+    color: '#7A6652',
     fontSize: 14,
     marginTop: 4,
   },

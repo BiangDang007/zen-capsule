@@ -2,7 +2,7 @@
 <!--
   Network Security Config for Zen Capsule.
   - Production: HTTPS only (cleartext blocked)
-  - Debug: Allow cleartext to 10.0.2.2 and localhost (emulator → host)
+  - Debug: Allow cleartext to emulator localhost (10.0.2.2)
 -->
 <network-security-config>
     <!-- Default: block cleartext (HTTP) traffic -->

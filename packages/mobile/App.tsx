@@ -15,7 +15,7 @@ function App() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <AuthProvider>
-          <StatusBar barStyle="light-content" backgroundColor="#1A1410" />
+          <StatusBar barStyle="dark-content" backgroundColor="#FFF5EB" />
           <AppNavigator />
         </AuthProvider>
       </ErrorBoundary>

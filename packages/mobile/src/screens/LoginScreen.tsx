@@ -55,7 +55,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#AA9080"
+            placeholderTextColor="#A89880"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
@@ -64,7 +64,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password"
-            placeholderTextColor="#AA9080"
+            placeholderTextColor="#A89880"
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -75,7 +75,7 @@ export default function LoginScreen() {
             onPress={handleSubmit}
             disabled={loading}>
             {loading ? (
-              <ActivityIndicator color="#FFF5EB" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>
                 {isRegister ? 'Sign Up' : 'Sign In'}
@@ -101,7 +101,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1410',
+    backgroundColor: '#FFF5EB',
   },
   inner: {
     flex: 1,
@@ -119,29 +119,29 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#FFF0E0',
+    color: '#E8712A',
     letterSpacing: 1,
   },
   subtitle: {
     fontSize: 14,
-    color: '#AA9080',
+    color: '#7A6652',
     marginTop: 8,
   },
   form: {
   },
   input: {
-    backgroundColor: '#2A2018',
+    backgroundColor: '#FFF0E0',
     borderWidth: 1,
-    borderColor: '#4A3828',
+    borderColor: '#E8D5C0',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#FFF0E0',
+    color: '#2D1B0E',
     marginBottom: 16,
   },
   button: {
-    backgroundColor: '#FF9F43',
+    backgroundColor: '#E8712A',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFF5EB',
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   toggleText: {
-    color: '#FF9F43',
+    color: '#E8712A',
     fontSize: 14,
   },
 });
