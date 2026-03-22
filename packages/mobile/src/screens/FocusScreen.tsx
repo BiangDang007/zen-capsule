@@ -13,7 +13,7 @@ import {
   PermissionsAndroid,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { api } from '../services/api';
+import { api, tryRefreshToken } from '../services/api';
 import { setFocusMode, setAuthToken, setRefreshToken } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -142,16 +142,25 @@ export default function FocusScreen() {
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
 
-    // Start session via API FIRST — this triggers auto-refresh in api.ts
-    // if the access token is expired, ensuring AsyncStorage has fresh tokens
-    // before we pass them to the Kotlin NotificationListener.
+    // Ensure tokens are fresh before starting.
+    // createApiClient has no 401 interceptor, so we must refresh manually.
     let newSessionId: string | null = null;
     try {
       const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
       newSessionId = session.id;
       setSessionId(session.id);
     } catch {
-      // Offline mode: still run timer locally
+      // Token may be expired — try refreshing and retry once
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        try {
+          const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
+          newSessionId = session.id;
+          setSessionId(session.id);
+        } catch {
+          // Offline mode: still run timer locally
+        }
+      }
     }
 
     // Now read (possibly refreshed) tokens and pass to Kotlin layer

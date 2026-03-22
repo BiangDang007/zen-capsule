@@ -74,10 +74,13 @@ export async function focusRoutes(app: FastifyInstance) {
     const userId = (req.user as { sub: string }).sub
     const { limit = '10', offset = '0' } = req.query as Record<string, string>
 
-    // Auto-close ALL orphaned sessions (endedAt is null).
+    // Auto-close orphaned sessions (endedAt is null, started > 2 min ago).
     // These occur when the app is force-closed mid-focus.
+    // The 2-minute threshold prevents closing a session that was JUST created
+    // (e.g. user pressed Start Focus and this endpoint is called moments later).
+    const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000)
     const orphaned = await prisma.focusSession.findMany({
-      where: { userId, endedAt: null },
+      where: { userId, endedAt: null, startedAt: { lt: twoMinAgo } },
     })
     if (orphaned.length > 0) {
       const now = new Date()
@@ -124,10 +127,11 @@ export async function focusRoutes(app: FastifyInstance) {
         })
 
     // Auto-recover orphaned sessions: if no ended session found,
-    // check for stale in-progress sessions and close them
+    // check for stale in-progress sessions (started > 2 min ago) and close them
     if (!session && !sessionId) {
+      const twoMinAgo2 = new Date(Date.now() - 2 * 60 * 1000)
       const orphaned = await prisma.focusSession.findFirst({
-        where: { userId, endedAt: null },
+        where: { userId, endedAt: null, startedAt: { lt: twoMinAgo2 } },
         orderBy: { startedAt: 'desc' },
       })
       if (orphaned) {

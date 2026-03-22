@@ -199,20 +199,50 @@ class ZenNotificationListener : NotificationListenerService() {
     ): UrgencyResult {
         val combined = "$title $text".lowercase()
 
-        // Phase 1: instant keyword check
+        // Phase 1: instant keyword check — still call AI API to record in DB,
+        // but use keyword score as a guaranteed minimum
+        var keywordMatch: String? = null
         for (kw in URGENT_KEYWORDS) {
             if (combined.contains(kw.lowercase())) {
-                return UrgencyResult(true, 90, "Keyword match: $kw")
+                keywordMatch = kw
+                break
             }
         }
 
-        // Phase 2: Claude AI (with 401 retry)
+        // Phase 2: keyword match → skip AI, send lightweight log-only request
+        if (keywordMatch != null) {
+            val token = authToken
+            if (token != null) {
+                try {
+                    doLogOnlyRequest(token, title, text, appName, packageName, senderName, repeatCount, 90, "Keyword match: $keywordMatch")
+                    Log.d(TAG, "Keyword log-only request succeeded for $senderName")
+                } catch (e: TokenExpiredException) {
+                    Log.w(TAG, "Keyword log-only: token expired, refreshing...")
+                    val newToken = refreshAccessToken()
+                    if (newToken != null) {
+                        authToken = newToken
+                        try {
+                            doLogOnlyRequest(newToken, title, text, appName, packageName, senderName, repeatCount, 90, "Keyword match: $keywordMatch")
+                            Log.d(TAG, "Keyword log-only request succeeded after refresh for $senderName")
+                        } catch (e2: Exception) {
+                            Log.e(TAG, "Keyword log-only failed after refresh: ${e2.message}")
+                        }
+                    } else {
+                        Log.e(TAG, "Keyword log-only: refresh failed, log NOT recorded for $senderName")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Keyword log-only request failed: ${e.javaClass.simpleName}: ${e.message}")
+                }
+            }
+            return UrgencyResult(true, 90, "Keyword match: $keywordMatch")
+        }
+
+        // Phase 3: Claude AI (with 401 retry)
         val token = authToken ?: return UrgencyResult(false, 0, "No auth token")
 
         return try {
             doAnalyseRequest(token, title, text, appName, packageName, senderName, repeatCount)
         } catch (e: TokenExpiredException) {
-            // Attempt token refresh and retry once
             Log.w(TAG, "Token expired, attempting refresh...")
             val newToken = refreshAccessToken()
             if (newToken != null) {
@@ -235,6 +265,48 @@ class ZenNotificationListener : NotificationListenerService() {
 
     /** Custom exception for 401 responses */
     private class TokenExpiredException : Exception("Access token expired")
+
+    /**
+     * Log-only request: sends keywordScore to backend so it skips Claude AI
+     * and just writes a BehaviorLog entry. Saves API calls for obvious matches.
+     */
+    private fun doLogOnlyRequest(
+        token: String, title: String, text: String, appName: String,
+        packageName: String, senderName: String, repeatCount: Int,
+        score: Int, reason: String
+    ) {
+        val url = URL("$API_BASE/ai/analyse")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 3000
+        conn.readTimeout = 5000
+        conn.doOutput = true
+
+        val body = JSONObject().apply {
+            put("content", if (title.isNotEmpty()) "$title: $text" else text)
+            put("senderName", senderName)
+            put("senderContact", senderName)
+            put("subject", title)
+            put("preview", text)
+            put("appName", appName)
+            put("packageName", packageName)
+            put("repeatCount", repeatCount)
+            put("keywordScore", score)
+            put("keywordReason", reason)
+        }
+
+        conn.outputStream.bufferedWriter().use { it.write(body.toString()) }
+
+        val responseCode = conn.responseCode
+        if (responseCode == 401) {
+            conn.disconnect()
+            throw TokenExpiredException()
+        }
+        // We don't need the response — just ensure the log was created
+        conn.disconnect()
+    }
 
     private fun doAnalyseRequest(
         token: String, title: String, text: String, appName: String,

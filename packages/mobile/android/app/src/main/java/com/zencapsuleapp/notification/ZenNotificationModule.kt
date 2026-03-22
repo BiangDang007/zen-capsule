@@ -50,6 +50,7 @@ class ZenNotificationModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun setFocusMode(active: Boolean) {
+        android.util.Log.d("ZenNotificationModule", "setFocusMode($active), authToken=${if (ZenNotificationListener.authToken != null) "SET" else "NULL"}")
         ZenNotificationListener.isFocusing = active
         if (!active) {
             // When focus ends, stop intercepting
@@ -62,6 +63,7 @@ class ZenNotificationModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun setAuthToken(token: String?) {
+        android.util.Log.d("ZenNotificationModule", "setAuthToken called, token=${if (token != null) "${token.take(20)}..." else "null"}")
         ZenNotificationListener.authToken = token
     }
 
@@ -70,6 +72,7 @@ class ZenNotificationModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun setRefreshToken(token: String?) {
+        android.util.Log.d("ZenNotificationModule", "setRefreshToken called, token=${if (token != null) "${token.take(20)}..." else "null"}")
         ZenNotificationListener.refreshToken = token
     }
 

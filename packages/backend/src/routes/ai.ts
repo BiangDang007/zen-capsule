@@ -14,6 +14,9 @@ const analyseSchema = z.object({
   repeatCount: z.number().int().min(0).max(999).optional(),
   appName: z.string().max(100).optional(),      // "Shopee", "LINE" — from Android
   packageName: z.string().max(200).optional(),  // "com.shopee.tw"  — from Android
+  // When set, skip Claude AI and record directly (keyword match on client)
+  keywordScore: z.number().int().min(0).max(100).optional(),
+  keywordReason: z.string().max(200).optional(),
 })
 
 const feedbackSchema = z.object({
@@ -133,6 +136,54 @@ export async function aiRoutes(app: FastifyInstance) {
           logId: log.id,
         })
       }
+    }
+
+    // ── Client-side keyword match: skip AI, record directly (saves API calls) ──
+    if (body.data.keywordScore != null) {
+      const now = new Date()
+      const score = body.data.keywordScore
+      const shouldBreak = score >= 80
+      const category = score >= 80 ? 'critical' : score >= 50 ? 'important' : 'normal'
+      const reason = body.data.keywordReason || 'Keyword match'
+
+      const log = await prisma.$transaction(async (tx) => {
+        await tx.focusSession.updateMany({
+          where: { userId, endedAt: null },
+          data: { interceptCount: { increment: 1 } },
+        })
+        const activeSession = await tx.focusSession.findFirst({
+          where: { userId, endedAt: null },
+          orderBy: { startedAt: 'desc' },
+        })
+        return tx.behaviorLog.create({
+          data: {
+            userId,
+            senderEmail: body.data.senderContact,
+            senderName: body.data.senderName,
+            subject: body.data.subject || body.data.content.slice(0, 100),
+            preview: body.data.preview || body.data.content.slice(0, 200),
+            appName: body.data.appName,
+            packageName: body.data.packageName,
+            isWhitelisted: false,
+            repeatCount: body.data.repeatCount ?? 1,
+            hourOfDay: now.getHours(),
+            dayOfWeek: now.getDay(),
+            aiScore: score,
+            aiCategory: category,
+            aiShouldBreak: shouldBreak,
+            aiReason: reason,
+            modelVersion: 'local-keyword',
+            focusSessionId: activeSession?.id,
+            focusMinute: activeSession
+              ? Math.floor((now.getTime() - activeSession.startedAt.getTime()) / 60000)
+              : null,
+          },
+        })
+      })
+      return reply.send({
+        result: { score, isUrgent: shouldBreak, shouldBreakthrough: shouldBreak, reason, category },
+        logId: log.id,
+      })
     }
 
     try {
