@@ -35,7 +35,7 @@ class ZenNotificationListener : NotificationListenerService() {
             get() = if (com.zencapsuleapp.BuildConfig.DEBUG) {
                 "http://10.0.2.2:3001/api/v1"
             } else {
-                "https://api.zencapsule.com/api/v1"
+                "https://zen-capsule-backend-production.up.railway.app/api/v1"
             }
 
         // System / own packages that must never be intercepted

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createApiClient } from '@zen-capsule/shared';
 
 const DEV_URL = 'http://10.0.2.2:3001';
-const PROD_URL = 'https://api.zencapsule.com';
+const PROD_URL = 'https://zen-capsule-backend-production.up.railway.app';
 const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
 
 const TOKEN_KEY = 'zen_capsule_token';
