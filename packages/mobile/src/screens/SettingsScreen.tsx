@@ -10,6 +10,7 @@ import {
   InteractionManager,
   Animated,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -22,31 +23,15 @@ import type {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const RELATIONSHIPS: { value: SenderRelationship; label: string }[] = [
-  { value: 'boss', label: '老闆' },
-  { value: 'client', label: '客戶' },
-  { value: 'family', label: '家人' },
-  { value: 'friend', label: '朋友' },
-  { value: 'coworker', label: '同事' },
-  { value: 'other', label: '其他' },
-]
+const RELATIONSHIP_KEYS: SenderRelationship[] = ['boss', 'client', 'family', 'friend', 'coworker', 'other'];
 
-const RELATIONSHIP_LABELS: Record<SenderRelationship, string> = {
-  boss: '老闆', client: '客戶', family: '家人',
-  friend: '朋友', coworker: '同事', other: '其他',
-}
+const APP_RULE_ACTION_KEYS: AppRuleAction[] = ['always_block', 'always_allow', 'ask_ai'];
 
-const APP_RULE_ACTIONS: { value: AppRuleAction; label: string; desc: string }[] = [
-  { value: 'always_block', label: '永遠攔截', desc: '不問 AI，直接攔截' },
-  { value: 'always_allow', label: '永遠放行', desc: '不問 AI，直接穿透' },
-  { value: 'ask_ai', label: 'AI 判斷', desc: '每次用 AI 分析（預設）' },
-]
-
-const ACTION_LABELS: Record<AppRuleAction, string> = {
-  always_block: '🚫 攔截',
-  always_allow: '✅ 放行',
-  ask_ai: '🤖 AI',
-}
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'zh-TW', label: '繁體中文' },
+  { code: 'ar', label: 'العربية' },
+];
 
 // ── Custom Toggle (avoids Fabric Switch crash) ───────────────────────────
 
@@ -97,6 +82,7 @@ const toggleStyles = StyleSheet.create({
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
+  const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [urgentOnlyMode, setUrgentOnlyMode] = useState(true);
@@ -119,22 +105,8 @@ export default function SettingsScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePw, setDeletePw] = useState('');
 
-  // Track whether the very first mount has finished so we can safely
-  // call setState without racing against Fabric's initial commit.
   const hasMounted = useRef(false);
 
-  // Fetch data on focus — but DEFER on first mount.
-  //
-  // WHY: On Android Fabric (New Architecture), useFocusEffect fires
-  // immediately when the tab screen mounts. If the API responds before
-  // Fabric finishes committing the initial view tree, the resulting
-  // setState triggers a re-render that conflicts with the in-progress
-  // mount → "addViewAt: child already has a parent" crash.
-  //
-  // FIX: On the very first focus, wait for InteractionManager (which
-  // signals that all pending native animations/mount work is done)
-  // before fetching. On subsequent focuses (tab switch back), Fabric
-  // has already mounted so we can fetch immediately.
   useFocusEffect(
     useCallback(() => {
       const doFetch = () => {
@@ -143,7 +115,6 @@ export default function SettingsScreen() {
       };
 
       if (!hasMounted.current) {
-        // First mount: defer until Fabric finishes committing the view tree
         const handle = InteractionManager.runAfterInteractions(() => {
           hasMounted.current = true;
           doFetch();
@@ -151,10 +122,40 @@ export default function SettingsScreen() {
         return () => handle.cancel();
       }
 
-      // Subsequent focus events: safe to fetch immediately
       doFetch();
     }, [])
   );
+
+  // ── Helpers for i18n lookups ─────────────────────────────────────────────
+
+  const relLabel = (rel: SenderRelationship) => t(`settings.rel.${rel}`);
+
+  const actionLabel = (action: AppRuleAction) => {
+    const map: Record<AppRuleAction, string> = {
+      always_block: t('settings.alwaysBlock'),
+      always_allow: t('settings.alwaysAllow'),
+      ask_ai: t('settings.askAi'),
+    };
+    return map[action];
+  };
+
+  const actionDesc = (action: AppRuleAction) => {
+    const map: Record<AppRuleAction, string> = {
+      always_block: t('settings.alwaysBlockDesc'),
+      always_allow: t('settings.alwaysAllowDesc'),
+      ask_ai: t('settings.askAiDesc'),
+    };
+    return map[action];
+  };
+
+  const actionBadgeLabel = (action: AppRuleAction) => {
+    const map: Record<AppRuleAction, string> = {
+      always_block: t('settings.actionBlock'),
+      always_allow: t('settings.actionAllow'),
+      ask_ai: t('settings.actionAi'),
+    };
+    return map[action];
+  };
 
   // ── Whitelist handlers ───────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ export default function SettingsScreen() {
       setNewSenderContact('');
       setNewRelationship('other');
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -182,7 +183,7 @@ export default function SettingsScreen() {
       await api.ai.removeWhitelist(id);
       setWhitelist(prev => prev.filter(e => e.id !== id));
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -200,7 +201,7 @@ export default function SettingsScreen() {
       setNewAppName('');
       setNewAppAction('always_block');
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -209,7 +210,7 @@ export default function SettingsScreen() {
       await api.ai.removeAppRule(id);
       setAppRules(prev => prev.filter(r => r.id !== id));
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -217,60 +218,91 @@ export default function SettingsScreen() {
 
   const handleChangePassword = async () => {
     if (!currentPw || newPw.length < 8) {
-      Alert.alert('錯誤', '新密碼至少 8 個字元');
+      Alert.alert(t('common.error'), t('settings.newPwMinLength'));
       return;
     }
     try {
       await api.auth.changePassword({ currentPassword: currentPw, newPassword: newPw });
-      Alert.alert('成功', '密碼已變更，請重新登入');
+      Alert.alert(t('common.success'), t('settings.passwordChanged'));
       setShowChangePassword(false);
       setCurrentPw('');
       setNewPw('');
       signOut();
     } catch (err: any) {
-      Alert.alert('錯誤', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!deletePw) {
-      Alert.alert('錯誤', '請輸入密碼');
+      Alert.alert(t('common.error'), t('settings.enterPassword'));
       return;
     }
     try {
       await api.auth.deleteAccount({ password: deletePw });
-      Alert.alert('帳號已刪除', '你的帳號和所有資料已永久刪除');
+      Alert.alert(t('settings.accountDeleted'), t('settings.accountDeletedMsg'));
       signOut();
     } catch (err: any) {
-      Alert.alert('錯誤', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
   // ── Sign out ─────────────────────────────────────────────────────────────
 
   const handleSignOut = () => {
-    Alert.alert('登出', '確定要登出嗎？', [
-      { text: '取消', style: 'cancel' },
-      { text: '登出', style: 'destructive', onPress: signOut },
+    Alert.alert(t('settings.signOut'), t('settings.signOutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.signOut'), style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  // ── Language switcher ────────────────────────────────────────────────────
+
+  const changeLanguage = (code: string) => {
+    i18n.changeLanguage(code);
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Account */}
-      <Text style={styles.sectionTitle}>帳號</Text>
+      {/* Language */}
+      <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
       <View style={styles.card}>
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.hint}>{t('settings.languageDesc')}</Text>
+        <View style={styles.chipRow}>
+          {LANGUAGES.map(lang => (
+            <TouchableOpacity
+              key={lang.code}
+              style={[
+                styles.chip,
+                i18n.language === lang.code && styles.chipActive,
+              ]}
+              onPress={() => changeLanguage(lang.code)}>
+              <Text
+                style={[
+                  styles.chipText,
+                  i18n.language === lang.code && styles.chipTextActive,
+                ]}>
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Account */}
+      <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
+      <View style={styles.card}>
+        <Text style={styles.label}>{t('common.email')}</Text>
         <Text style={styles.value}>{user?.email || '—'}</Text>
       </View>
 
       {/* Preferences */}
-      <Text style={styles.sectionTitle}>偏好設定</Text>
+      <Text style={styles.sectionTitle}>{t('settings.preferences')}</Text>
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLeft}>
-            <Text style={styles.label}>緊急通知穿透</Text>
-            <Text style={styles.hint}>允許緊急訊息在專注時穿透</Text>
+            <Text style={styles.label}>{t('settings.breakthroughNotif')}</Text>
+            <Text style={styles.hint}>{t('settings.breakthroughNotifDesc')}</Text>
           </View>
           <Toggle value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
         </View>
@@ -278,150 +310,113 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLeft}>
-            <Text style={styles.label}>AI 緊急判斷</Text>
-            <Text style={styles.hint}>使用 Claude AI 分析訊息緊急度</Text>
+            <Text style={styles.label}>{t('settings.aiUrgency')}</Text>
+            <Text style={styles.hint}>{t('settings.aiUrgencyDesc')}</Text>
           </View>
           <Toggle value={urgentOnlyMode} onValueChange={setUrgentOnlyMode} />
         </View>
       </View>
 
       {/* Whitelist */}
-      <Text style={styles.sectionTitle}>白名單（永遠放行）</Text>
+      <Text style={styles.sectionTitle}>{t('settings.whitelist')}</Text>
       <View style={styles.card}>
-        {/* Name input */}
         <TextInput
           style={styles.addInput}
-          placeholder="名稱（如：張經理）"
+          placeholder={t('settings.whitelistName')}
           placeholderTextColor="#A89880"
           value={newSenderName}
           onChangeText={setNewSenderName}
         />
-        {/* Contact input */}
         <TextInput
           style={[styles.addInput, { marginTop: 8 }]}
-          placeholder="聯絡方式（email 或電話）"
+          placeholder={t('settings.whitelistContact')}
           placeholderTextColor="#A89880"
           value={newSenderContact}
           onChangeText={setNewSenderContact}
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        {/* Relationship chips */}
-        <Text style={styles.chipLabel}>關係</Text>
+        <Text style={styles.chipLabel}>{t('settings.relationship')}</Text>
         <View style={styles.chipRow}>
-          {RELATIONSHIPS.slice(0, 3).map(r => (
+          {RELATIONSHIP_KEYS.slice(0, 3).map(rel => (
             <TouchableOpacity
-              key={r.value}
-              style={[
-                styles.chip,
-                newRelationship === r.value && styles.chipActive,
-              ]}
-              onPress={() => setNewRelationship(r.value)}>
-              <Text
-                style={[
-                  styles.chipText,
-                  newRelationship === r.value && styles.chipTextActive,
-                ]}>
-                {r.label}
+              key={rel}
+              style={[styles.chip, newRelationship === rel && styles.chipActive]}
+              onPress={() => setNewRelationship(rel)}>
+              <Text style={[styles.chipText, newRelationship === rel && styles.chipTextActive]}>
+                {relLabel(rel)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
         <View style={styles.chipRow}>
-          {RELATIONSHIPS.slice(3).map(r => (
+          {RELATIONSHIP_KEYS.slice(3).map(rel => (
             <TouchableOpacity
-              key={r.value}
-              style={[
-                styles.chip,
-                newRelationship === r.value && styles.chipActive,
-              ]}
-              onPress={() => setNewRelationship(r.value)}>
-              <Text
-                style={[
-                  styles.chipText,
-                  newRelationship === r.value && styles.chipTextActive,
-                ]}>
-                {r.label}
+              key={rel}
+              style={[styles.chip, newRelationship === rel && styles.chipActive]}
+              onPress={() => setNewRelationship(rel)}>
+              <Text style={[styles.chipText, newRelationship === rel && styles.chipTextActive]}>
+                {relLabel(rel)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        {/* Add button */}
         <TouchableOpacity style={styles.addButton} onPress={handleAddWhitelist}>
-          <Text style={styles.addButtonText}>新增白名單</Text>
+          <Text style={styles.addButtonText}>{t('settings.addWhitelist')}</Text>
         </TouchableOpacity>
 
-        {/* Existing entries */}
         {whitelist.map(entry => (
           <View key={entry.id} style={styles.whitelistRow}>
             <View style={styles.whitelistInfo}>
-              <Text style={styles.whitelistSender}>
-                {entry.name}
-              </Text>
+              <Text style={styles.whitelistSender}>{entry.name}</Text>
               <View style={styles.whitelistMeta}>
                 <View style={styles.relationBadge}>
                   <Text style={styles.relationBadgeText}>
-                    {RELATIONSHIP_LABELS[entry.relationship] || '其他'}
+                    {relLabel(entry.relationship)}
                   </Text>
                 </View>
                 <Text style={styles.whitelistContact}>{entry.contact}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => handleRemoveWhitelist(entry.id)}>
-              <Text style={styles.removeText}>移除</Text>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
           </View>
         ))}
         {whitelist.length === 0 && (
-          <Text style={styles.emptyText}>尚未設定白名單</Text>
+          <Text style={styles.emptyText}>{t('settings.noWhitelist')}</Text>
         )}
       </View>
 
       {/* App Rules */}
-      <Text style={styles.sectionTitle}>App 規則</Text>
-      <Text style={styles.sectionDesc}>
-        為特定 App 設定固定規則，跳過 AI 分析以節省用量
-      </Text>
+      <Text style={styles.sectionTitle}>{t('settings.appRules')}</Text>
+      <Text style={styles.sectionDesc}>{t('settings.appRulesDesc')}</Text>
       <View style={styles.card}>
-        {/* App name input */}
         <TextInput
           style={styles.addInput}
-          placeholder="App 名稱（如：Shopee, Instagram）"
+          placeholder={t('settings.appName')}
           placeholderTextColor="#A89880"
           value={newAppName}
           onChangeText={setNewAppName}
         />
-        {/* Action chips */}
-        <Text style={styles.chipLabel}>動作</Text>
+        <Text style={styles.chipLabel}>{t('settings.action')}</Text>
         <View style={styles.chipRow}>
-          {APP_RULE_ACTIONS.map(a => (
+          {APP_RULE_ACTION_KEYS.map(a => (
             <TouchableOpacity
-              key={a.value}
-              style={[
-                styles.chip,
-                newAppAction === a.value && styles.chipActive,
-              ]}
-              onPress={() => setNewAppAction(a.value)}>
-              <Text
-                style={[
-                  styles.chipText,
-                  newAppAction === a.value && styles.chipTextActive,
-                ]}>
-                {a.label}
+              key={a}
+              style={[styles.chip, newAppAction === a && styles.chipActive]}
+              onPress={() => setNewAppAction(a)}>
+              <Text style={[styles.chipText, newAppAction === a && styles.chipTextActive]}>
+                {actionLabel(a)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        {/* Selected action description */}
-        <Text style={styles.actionDesc}>
-          {APP_RULE_ACTIONS.find(a => a.value === newAppAction)?.desc}
-        </Text>
-        {/* Add button */}
+        <Text style={styles.actionDescText}>{actionDesc(newAppAction)}</Text>
         <TouchableOpacity style={styles.addButton} onPress={handleAddAppRule}>
-          <Text style={styles.addButtonText}>新增規則</Text>
+          <Text style={styles.addButtonText}>{t('settings.addRule')}</Text>
         </TouchableOpacity>
 
-        {/* Existing rules */}
         {appRules.map(rule => (
           <View key={rule.id} style={styles.whitelistRow}>
             <View style={styles.whitelistInfo}>
@@ -439,36 +434,36 @@ export default function SettingsScreen() {
                     rule.action === 'always_allow' && styles.actionBadgeTextAllow,
                     rule.action === 'ask_ai' && styles.actionBadgeTextAi,
                   ]}>
-                    {ACTION_LABELS[rule.action]}
+                    {actionBadgeLabel(rule.action)}
                   </Text>
                 </View>
               </View>
             </View>
             <TouchableOpacity onPress={() => handleRemoveAppRule(rule.id)}>
-              <Text style={styles.removeText}>移除</Text>
+              <Text style={styles.removeText}>{t('common.remove')}</Text>
             </TouchableOpacity>
           </View>
         ))}
         {appRules.length === 0 && (
-          <Text style={styles.emptyText}>尚未設定 App 規則（所有 App 預設使用 AI 判斷）</Text>
+          <Text style={styles.emptyText}>{t('settings.noAppRules')}</Text>
         )}
       </View>
 
       {/* Account Management */}
-      <Text style={styles.sectionTitle}>帳號管理</Text>
+      <Text style={styles.sectionTitle}>{t('settings.accountMgmt')}</Text>
 
       {/* Change Password */}
       <View style={styles.card}>
         {!showChangePassword ? (
           <TouchableOpacity onPress={() => setShowChangePassword(true)}>
-            <Text style={styles.label}>變更密碼</Text>
-            <Text style={styles.hint}>定期變更密碼以保護帳號安全</Text>
+            <Text style={styles.label}>{t('settings.changePassword')}</Text>
+            <Text style={styles.hint}>{t('settings.changePasswordDesc')}</Text>
           </TouchableOpacity>
         ) : (
           <>
             <TextInput
               style={styles.addInput}
-              placeholder="目前密碼"
+              placeholder={t('settings.currentPassword')}
               placeholderTextColor="#A89880"
               secureTextEntry
               value={currentPw}
@@ -476,7 +471,7 @@ export default function SettingsScreen() {
             />
             <TextInput
               style={[styles.addInput, { marginTop: 8 }]}
-              placeholder="新密碼（至少 8 字元）"
+              placeholder={t('settings.newPassword')}
               placeholderTextColor="#A89880"
               secureTextEntry
               value={newPw}
@@ -486,12 +481,12 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.addButton, { flex: 1 }]}
                 onPress={handleChangePassword}>
-                <Text style={styles.addButtonText}>確認變更</Text>
+                <Text style={styles.addButtonText}>{t('settings.confirmChange')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.addButton, { flex: 1, backgroundColor: '#F5EDE3' }]}
                 onPress={() => { setShowChangePassword(false); setCurrentPw(''); setNewPw(''); }}>
-                <Text style={[styles.addButtonText, { color: '#7A6652' }]}>取消</Text>
+                <Text style={[styles.addButtonText, { color: '#7A6652' }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -502,16 +497,16 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         {!showDeleteConfirm ? (
           <TouchableOpacity onPress={() => setShowDeleteConfirm(true)}>
-            <Text style={[styles.label, { color: '#DC3545' }]}>刪除帳號</Text>
-            <Text style={styles.hint}>永久刪除帳號及所有資料（無法復原）</Text>
+            <Text style={[styles.label, { color: '#DC3545' }]}>{t('settings.deleteAccount')}</Text>
+            <Text style={styles.hint}>{t('settings.deleteAccountDesc')}</Text>
           </TouchableOpacity>
         ) : (
           <>
-            <Text style={[styles.label, { color: '#DC3545', marginBottom: 8 }]}>確認刪除帳號</Text>
-            <Text style={[styles.hint, { marginBottom: 8 }]}>輸入密碼以確認刪除。此操作無法復原。</Text>
+            <Text style={[styles.label, { color: '#DC3545', marginBottom: 8 }]}>{t('settings.confirmDelete')}</Text>
+            <Text style={[styles.hint, { marginBottom: 8 }]}>{t('settings.confirmDeleteDesc')}</Text>
             <TextInput
               style={styles.addInput}
-              placeholder="輸入密碼確認"
+              placeholder={t('settings.enterPwConfirm')}
               placeholderTextColor="#A89880"
               secureTextEntry
               value={deletePw}
@@ -521,12 +516,12 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.signOutButton, { flex: 1 }]}
                 onPress={handleDeleteAccount}>
-                <Text style={styles.signOutText}>永久刪除</Text>
+                <Text style={styles.signOutText}>{t('settings.deletePermanently')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.addButton, { flex: 1, backgroundColor: '#F5EDE3' }]}
                 onPress={() => { setShowDeleteConfirm(false); setDeletePw(''); }}>
-                <Text style={[styles.addButtonText, { color: '#7A6652' }]}>取消</Text>
+                <Text style={[styles.addButtonText, { color: '#7A6652' }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -535,7 +530,7 @@ export default function SettingsScreen() {
 
       {/* Sign Out */}
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>登出</Text>
+        <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
       </TouchableOpacity>
 
       <View style={styles.footer}>
@@ -583,7 +578,7 @@ const styles = StyleSheet.create({
   },
   rowLeft: {
     flex: 1,
-    marginRight: 12,
+    marginEnd: 12,
   },
   label: {
     color: '#2D1B0E',
@@ -630,6 +625,7 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   chip: {
     paddingHorizontal: 12,
@@ -654,7 +650,7 @@ const styles = StyleSheet.create({
   },
 
   // Action description
-  actionDesc: {
+  actionDescText: {
     color: '#A89880',
     fontSize: 11,
     fontStyle: 'italic',
@@ -673,7 +669,7 @@ const styles = StyleSheet.create({
   },
   whitelistInfo: {
     flex: 1,
-    marginRight: 12,
+    marginEnd: 12,
   },
   whitelistSender: {
     color: '#2D1B0E',
@@ -688,7 +684,7 @@ const styles = StyleSheet.create({
   whitelistContact: {
     color: '#A89880',
     fontSize: 12,
-    marginLeft: 8,
+    marginStart: 8,
   },
   relationBadge: {
     paddingHorizontal: 8,

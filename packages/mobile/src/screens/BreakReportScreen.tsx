@@ -8,6 +8,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { api, tryRefreshToken } from '../services/api';
 import type {
@@ -17,136 +18,137 @@ import type {
   UserAction,
 } from '@zen-capsule/shared';
 
-// ── Section config ─────────────────────────────────────────────────────────
-
-const SECTIONS = [
-  { key: 'critical' as const, label: '🔴 緊急', color: '#DC3545' },
-  { key: 'important' as const, label: '🟡 重要', color: '#E8912A' },
-  { key: 'normal' as const, label: '🟠 普通', color: '#E8712A' },
-  { key: 'social' as const, label: '💬 社群', color: '#28A745' },
-]
-
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function BreakReportScreen() {
-  // Accept sessionId from navigation params (when opened from History)
-  const route = useRoute<any>()
-  const routeSessionId = route.params?.sessionId as string | undefined
+  const { t } = useTranslation();
+  const route = useRoute<any>();
+  const routeSessionId = route.params?.sessionId as string | undefined;
 
-  const [report, setReport] = useState<SessionReport | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const SECTIONS = [
+    { key: 'critical' as const, label: t('breakReport.critical'), color: '#DC3545' },
+    { key: 'important' as const, label: t('breakReport.important'), color: '#E8912A' },
+    { key: 'normal' as const, label: t('breakReport.normal'), color: '#E8712A' },
+    { key: 'social' as const, label: t('breakReport.social'), color: '#28A745' },
+  ];
+
+  const [report, setReport] = useState<SessionReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     critical: true,
     important: true,
     normal: false,
     social: false,
-  })
-  // Track the list of completed sessions for browsing (only when no routeSessionId)
-  const [sessionList, setSessionList] = useState<{ id: string; goal: string; startedAt: string }[]>([])
-  const [currentSessionIdx, setCurrentSessionIdx] = useState(0)
-  // Track which entries have received feedback
-  const [feedbackSent, setFeedbackSent] = useState<Record<string, UserAction>>({})
+  });
+  const [sessionList, setSessionList] = useState<{ id: string; goal: string; startedAt: string }[]>([]);
+  const [currentSessionIdx, setCurrentSessionIdx] = useState(0);
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, UserAction>>({});
 
   const fetchReport = useCallback(async (sessionId?: string) => {
     try {
-      const data = await api.focus.sessionReport(sessionId)
-      setReport(data)
-      // Pre-fill feedback state from server data
-      const existing: Record<string, UserAction> = {}
+      const data = await api.focus.sessionReport(sessionId);
+      setReport(data);
+      const existing: Record<string, UserAction> = {};
       for (const key of ['critical', 'important', 'normal', 'social'] as const) {
         for (const entry of (data[key] as any[])) {
           if (entry.userAction) {
-            existing[entry.logId || entry.id] = entry.userAction
+            existing[entry.logId || entry.id] = entry.userAction;
           }
         }
       }
-      setFeedbackSent(existing)
+      setFeedbackSent(existing);
     } catch (err: any) {
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
-        const refreshed = await tryRefreshToken()
+        const refreshed = await tryRefreshToken();
         if (refreshed) {
           try {
-            const data = await api.focus.sessionReport(sessionId)
-            setReport(data)
-            return
+            const data = await api.focus.sessionReport(sessionId);
+            setReport(data);
+            return;
           } catch {
             // Retry failed
           }
         }
       }
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [])
+  }, []);
 
   const fetchSessionList = useCallback(async () => {
     try {
-      const historyData = await api.focus.history(20, 0)
-      const completed = historyData.sessions.filter((s: any) => s.endedAt != null)
+      const historyData = await api.focus.history(20, 0);
+      const completed = historyData.sessions.filter((s: any) => s.endedAt != null);
       setSessionList(completed.map((s: any) => ({
         id: s.id,
         goal: s.goal,
         startedAt: s.startedAt,
-      })))
+      })));
     } catch {
       // ignore
     }
-  }, [])
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true)
-      setCurrentSessionIdx(0)
-      setFeedbackSent({})
+      setLoading(true);
+      setCurrentSessionIdx(0);
+      setFeedbackSent({});
       if (routeSessionId) {
-        // Opened from History → load specific session, no session list browsing
-        fetchReport(routeSessionId)
+        fetchReport(routeSessionId);
       } else {
-        // Standalone tab → load latest, enable session browsing
-        fetchReport().then(() => fetchSessionList())
+        fetchReport().then(() => fetchSessionList());
       }
     }, [fetchReport, fetchSessionList, routeSessionId])
-  )
+  );
 
   const onRefresh = () => {
-    setRefreshing(true)
-    const currentId = sessionList[currentSessionIdx]?.id
-    fetchReport(currentId)
-  }
+    setRefreshing(true);
+    const currentId = sessionList[currentSessionIdx]?.id;
+    fetchReport(currentId);
+  };
 
   const goToPrevSession = () => {
-    const newIdx = currentSessionIdx + 1
+    const newIdx = currentSessionIdx + 1;
     if (newIdx < sessionList.length) {
-      setCurrentSessionIdx(newIdx)
-      setLoading(true)
-      setFeedbackSent({})
-      fetchReport(sessionList[newIdx].id)
+      setCurrentSessionIdx(newIdx);
+      setLoading(true);
+      setFeedbackSent({});
+      fetchReport(sessionList[newIdx].id);
     }
-  }
+  };
   const goToNextSession = () => {
-    const newIdx = currentSessionIdx - 1
+    const newIdx = currentSessionIdx - 1;
     if (newIdx >= 0) {
-      setCurrentSessionIdx(newIdx)
-      setLoading(true)
-      setFeedbackSent({})
-      fetchReport(sessionList[newIdx].id)
+      setCurrentSessionIdx(newIdx);
+      setLoading(true);
+      setFeedbackSent({});
+      fetchReport(sessionList[newIdx].id);
     }
-  }
+  };
 
   const toggle = (key: string) =>
-    setExpanded(prev => ({ ...prev, [key]: !prev[key] }))
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
-  // ── Feedback handler ────────────────────────────────────────────────────
   const sendFeedback = async (logId: string, userAction: UserAction) => {
     try {
-      await api.ai.feedback({ logId, userAction })
-      setFeedbackSent(prev => ({ ...prev, [logId]: userAction }))
+      await api.ai.feedback({ logId, userAction });
+      setFeedbackSent(prev => ({ ...prev, [logId]: userAction }));
     } catch {
-      // silently fail — feedback is best-effort
+      // silently fail
     }
-  }
+  };
+
+  const formatRelativeTime = (iso: string): string => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return t('breakReport.justNow');
+    if (min < 60) return t('breakReport.minutesAgo', { minutes: min });
+    const h = Math.floor(min / 60);
+    return t('breakReport.hoursAgo', { hours: h });
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -155,17 +157,17 @@ export default function BreakReportScreen() {
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#E8712A" />
       </View>
-    )
+    );
   }
 
   if (!report) {
     return (
       <View style={styles.centered}>
         <Text style={styles.emptyIcon}>📭</Text>
-        <Text style={styles.emptyText}>尚無紀錄</Text>
-        <Text style={styles.emptySubtext}>開始一次專注後，這裡會顯示攔截摘要</Text>
+        <Text style={styles.emptyText}>{t('breakReport.noRecords')}</Text>
+        <Text style={styles.emptySubtext}>{t('breakReport.noRecordsHint')}</Text>
       </View>
-    )
+    );
   }
 
   return (
@@ -183,7 +185,10 @@ export default function BreakReportScreen() {
           <View style={styles.banner}>
             <Text style={styles.bannerGoal}>{report.sessionGoal}</Text>
             <Text style={styles.bannerMeta}>
-              {report.durationMinutes} 分鐘 · 攔截 {report.totalIntercepted} 則
+              {t('breakReport.durationMeta', {
+                minutes: report.durationMinutes,
+                count: report.totalIntercepted,
+              })}
             </Text>
 
             {sessionList.length > 1 && (
@@ -192,7 +197,7 @@ export default function BreakReportScreen() {
                   onPress={goToPrevSession}
                   disabled={currentSessionIdx >= sessionList.length - 1}
                   style={[styles.navBtn, currentSessionIdx >= sessionList.length - 1 && styles.navBtnDisabled]}>
-                  <Text style={styles.navBtnText}>◀ 上一次</Text>
+                  <Text style={styles.navBtnText}>{t('breakReport.prevSession')}</Text>
                 </TouchableOpacity>
                 <Text style={styles.navIndicator}>
                   {currentSessionIdx + 1} / {sessionList.length}
@@ -201,7 +206,7 @@ export default function BreakReportScreen() {
                   onPress={goToNextSession}
                   disabled={currentSessionIdx <= 0}
                   style={[styles.navBtn, currentSessionIdx <= 0 && styles.navBtnDisabled]}>
-                  <Text style={styles.navBtnText}>下一次 ▶</Text>
+                  <Text style={styles.navBtnText}>{t('breakReport.nextSession')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -211,23 +216,24 @@ export default function BreakReportScreen() {
           {report.ads.count > 0 && (
             <View style={styles.adsStrip}>
               <Text style={styles.adsText}>
-                🛒 已靜默擋下 {report.ads.count} 則廣告
-                {report.ads.topApps.length > 0
-                  ? `（${report.ads.topApps.slice(0, 3).join('、')}）`
-                  : ''}
+                {t('breakReport.adsBlocked', {
+                  count: report.ads.count,
+                  apps: report.ads.topApps.length > 0
+                    ? `（${report.ads.topApps.slice(0, 3).join('、')}）`
+                    : '',
+                })}
               </Text>
             </View>
           )}
         </>
       }
       renderItem={({ item: section }) => {
-        const entries = report[section.key] as (SessionReportEntry & Partial<SessionReportEntryWithFeedback>)[]
-        if (entries.length === 0) return null
-        const isOpen = expanded[section.key]
+        const entries = report[section.key] as (SessionReportEntry & Partial<SessionReportEntryWithFeedback>)[];
+        if (entries.length === 0) return null;
+        const isOpen = expanded[section.key];
 
         return (
           <View style={styles.section}>
-            {/* Section header */}
             <TouchableOpacity
               style={styles.sectionHeader}
               onPress={() => toggle(section.key)}
@@ -235,24 +241,25 @@ export default function BreakReportScreen() {
               <Text style={[styles.sectionLabel, { color: section.color }]}>
                 {section.label}
               </Text>
-              <Text style={styles.sectionCount}>{entries.length} 則</Text>
+              <Text style={styles.sectionCount}>
+                {t('breakReport.entryCount', { count: entries.length })}
+              </Text>
               <Text style={[styles.chevron, { color: section.color }]}>
                 {isOpen ? '▲' : '▼'}
               </Text>
             </TouchableOpacity>
 
-            {/* Entries */}
             {isOpen &&
               entries.map(entry => {
-                const logId = (entry as any).logId as string | undefined
-                const aiReason = (entry as any).aiReason as string | null | undefined
-                const sentAction = logId ? feedbackSent[logId] : undefined
+                const logId = (entry as any).logId as string | undefined;
+                const aiReason = (entry as any).aiReason as string | null | undefined;
+                const sentAction = logId ? feedbackSent[logId] : undefined;
 
                 return (
                   <View key={entry.id} style={styles.entryCard}>
                     <View style={styles.entryRow}>
                       <Text style={styles.entryApp}>
-                        {entry.appName ?? entry.packageName ?? '未知 App'}
+                        {entry.appName ?? entry.packageName ?? t('breakReport.unknownApp')}
                       </Text>
                       <Text style={styles.entryTime}>
                         {formatRelativeTime(entry.createdAt)}
@@ -270,35 +277,33 @@ export default function BreakReportScreen() {
                       </Text>
                     ) : null}
 
-                    {/* AI reason */}
                     {aiReason ? (
                       <Text style={styles.aiReason}>AI: {aiReason}</Text>
                     ) : null}
 
                     {entry.aiShouldBreak && (
                       <View style={styles.breakthroughBadge}>
-                        <Text style={styles.breakthroughText}>已穿透通知</Text>
+                        <Text style={styles.breakthroughText}>{t('breakReport.breakthroughSent')}</Text>
                       </View>
                     )}
 
-                    {/* Feedback buttons */}
                     {logId ? (
                       <View style={styles.feedbackRow}>
                         {sentAction ? (
                           <View style={styles.feedbackSent}>
                             <Text style={styles.feedbackSentText}>
                               {sentAction === 'CONFIRMED_BLOCK' || sentAction === 'DISMISSED'
-                                ? '✅ 判斷正確'
+                                ? t('breakReport.correct')
                                 : sentAction === 'MARKED_URGENT'
-                                  ? '⬆️ 應更緊急'
+                                  ? t('breakReport.shouldBeUrgent')
                                   : sentAction === 'MARKED_NOT_URGENT'
-                                    ? '⬇️ 不需要這麼緊急'
-                                    : '已回饋'}
+                                    ? t('breakReport.notSoUrgent')
+                                    : t('breakReport.feedbackSent')}
                             </Text>
                           </View>
                         ) : (
                           <>
-                            <Text style={styles.feedbackLabel}>AI 判斷正確嗎？</Text>
+                            <Text style={styles.feedbackLabel}>{t('breakReport.aiFeedbackQ')}</Text>
                             <View style={styles.feedbackButtons}>
                               <TouchableOpacity
                                 style={styles.fbBtnCorrect}
@@ -306,7 +311,7 @@ export default function BreakReportScreen() {
                                   logId,
                                   entry.aiShouldBreak ? 'ALLOWED_THROUGH' : 'CONFIRMED_BLOCK'
                                 )}>
-                                <Text style={styles.fbBtnCorrectText}>👍 正確</Text>
+                                <Text style={styles.fbBtnCorrectText}>{t('breakReport.thumbsUp')}</Text>
                               </TouchableOpacity>
                               <TouchableOpacity
                                 style={styles.fbBtnWrong}
@@ -314,7 +319,7 @@ export default function BreakReportScreen() {
                                   logId,
                                   entry.aiShouldBreak ? 'MARKED_NOT_URGENT' : 'MARKED_URGENT'
                                 )}>
-                                <Text style={styles.fbBtnWrongText}>👎 不對</Text>
+                                <Text style={styles.fbBtnWrongText}>{t('breakReport.thumbsDown')}</Text>
                               </TouchableOpacity>
                             </View>
                           </>
@@ -322,25 +327,14 @@ export default function BreakReportScreen() {
                       </View>
                     ) : null}
                   </View>
-                )
+                );
               })}
           </View>
-        )
+        );
       }}
       ListEmptyComponent={null}
     />
-  )
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const min = Math.floor(diff / 60000)
-  if (min < 1) return '剛剛'
-  if (min < 60) return `${min} 分鐘前`
-  const h = Math.floor(min / 60)
-  return `${h} 小時前`
+  );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -356,7 +350,6 @@ const styles = StyleSheet.create({
   emptyText: { color: '#2D1B0E', fontSize: 18, fontWeight: '500' },
   emptySubtext: { color: '#7A6652', fontSize: 14, marginTop: 6, textAlign: 'center' },
 
-  // Banner
   banner: {
     margin: 16,
     padding: 16,
@@ -386,7 +379,6 @@ const styles = StyleSheet.create({
   navBtnText: { color: '#E8712A', fontSize: 13, fontWeight: '600' },
   navIndicator: { color: '#7A6652', fontSize: 12 },
 
-  // Ads strip
   adsStrip: {
     marginHorizontal: 16,
     marginBottom: 8,
@@ -398,7 +390,6 @@ const styles = StyleSheet.create({
   },
   adsText: { color: '#8B7355', fontSize: 13 },
 
-  // Section
   section: { marginHorizontal: 16, marginBottom: 12 },
   sectionHeader: {
     flexDirection: 'row',
@@ -407,10 +398,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   sectionLabel: { fontSize: 15, fontWeight: '700', flex: 1 },
-  sectionCount: { color: '#7A6652', fontSize: 13, marginRight: 8 },
+  sectionCount: { color: '#7A6652', fontSize: 13, marginEnd: 8 },
   chevron: { fontSize: 11 },
 
-  // Entry card
   entryCard: {
     backgroundColor: '#FFF0E0',
     borderRadius: 12,
@@ -426,7 +416,6 @@ const styles = StyleSheet.create({
   entrySubject: { color: '#2D1B0E', fontSize: 14, fontWeight: '500' },
   entryPreview: { color: '#7A6652', fontSize: 13, marginTop: 3 },
 
-  // AI reason
   aiReason: {
     color: '#8B7355',
     fontSize: 12,
@@ -444,7 +433,6 @@ const styles = StyleSheet.create({
   },
   breakthroughText: { color: '#DC3545', fontSize: 11, fontWeight: '600' },
 
-  // Feedback
   feedbackRow: {
     marginTop: 8,
     paddingTop: 8,
@@ -467,7 +455,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#28A74530',
-    marginRight: 4,
+    marginEnd: 4,
   },
   fbBtnCorrectText: {
     color: '#28A745',
@@ -482,7 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#DC354530',
-    marginLeft: 4,
+    marginStart: 4,
   },
   fbBtnWrongText: {
     color: '#DC3545',
@@ -498,4 +486,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-})
+});

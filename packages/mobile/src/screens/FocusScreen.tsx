@@ -12,32 +12,19 @@ import {
   Platform,
   PermissionsAndroid,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, tryRefreshToken } from '../services/api';
 import { setFocusMode, setAuthToken, setRefreshToken } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** Request POST_NOTIFICATIONS permission on Android 13+ (API 33) */
-async function ensureNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android' || (Platform.Version as number) < 33) return true;
-  const status = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-    {
-      title: 'Notification Permission',
-      message: 'Zen Capsule needs notification access to alert you about urgent messages during focus sessions.',
-      buttonPositive: 'Allow',
-      buttonNegative: 'Deny',
-    },
-  );
-  return status === PermissionsAndroid.RESULTS.GRANTED;
-}
-
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
 const CUSTOM_KEY = -1;
 
 export default function FocusScreen() {
+  const { t } = useTranslation();
   const [selectedMinutes, setSelectedMinutes] = useState(25);
-  const [activePreset, setActivePreset] = useState<number>(25); // tracks which button is highlighted
+  const [activePreset, setActivePreset] = useState<number>(25);
   const [customInput, setCustomInput] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -46,6 +33,21 @@ export default function FocusScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const customInputRef = useRef<TextInput>(null);
+
+  /** Request POST_NOTIFICATIONS permission on Android 13+ (API 33) */
+  const ensureNotificationPermission = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS !== 'android' || (Platform.Version as number) < 33) return true;
+    const status = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      {
+        title: t('focus.notifPermTitle'),
+        message: t('focus.notifPermMsg'),
+        buttonPositive: t('focus.allow'),
+        buttonNegative: t('focus.deny'),
+      },
+    );
+    return status === PermissionsAndroid.RESULTS.GRANTED;
+  }, [t]);
 
   // Pulse animation when running
   useEffect(() => {
@@ -63,14 +65,13 @@ export default function FocusScreen() {
     }
   }, [isRunning, pulseAnim]);
 
-  // Recover orphaned sessions on mount (e.g. app was force-closed mid-focus)
+  // Recover orphaned sessions on mount
   useFocusEffect(
     useCallback(() => {
       if (!isRunning) {
         api.focus.history(1, 0).then(res => {
           const latest = res.sessions?.[0];
           if (latest && !latest.endedAt) {
-            // Found an orphaned in-progress session — end it
             api.focus.end({ sessionId: latest.id }).catch(() => {});
           }
         }).catch(() => {});
@@ -102,15 +103,15 @@ export default function FocusScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     Vibration.vibrate([0, 500, 200, 500]);
     Alert.alert(
-      'Focus Complete!',
-      `Great job! You stayed focused for ${selectedMinutes} minutes.`,
-      [{ text: 'OK' }],
+      t('focus.focusComplete'),
+      t('focus.focusCompleteMsg', { minutes: selectedMinutes }),
+      [{ text: t('common.ok') }],
     );
     if (sessionId) {
       api.focus.end({ sessionId }).catch(() => {});
       setSessionId(null);
     }
-  }, [selectedMinutes, sessionId]);
+  }, [selectedMinutes, sessionId, t]);
 
   const selectPreset = (min: number) => {
     setActivePreset(min);
@@ -128,7 +129,7 @@ export default function FocusScreen() {
   const confirmCustom = () => {
     const parsed = parseInt(customInput, 10);
     if (isNaN(parsed) || parsed < 1 || parsed > 480) {
-      Alert.alert('Invalid duration', 'Please enter a number between 1 and 480 minutes.');
+      Alert.alert(t('focus.invalidDuration'), t('focus.invalidDurationMsg'));
       return;
     }
     setSelectedMinutes(parsed);
@@ -136,21 +137,17 @@ export default function FocusScreen() {
   };
 
   const startFocus = async () => {
-    // Request POST_NOTIFICATIONS permission on Android 13+
     await ensureNotificationPermission();
 
     setRemainingSeconds(selectedMinutes * 60);
     setIsRunning(true);
 
-    // Ensure tokens are fresh before starting.
-    // createApiClient has no 401 interceptor, so we must refresh manually.
     let newSessionId: string | null = null;
     try {
       const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
       newSessionId = session.id;
       setSessionId(session.id);
     } catch {
-      // Token may be expired — try refreshing and retry once
       const refreshed = await tryRefreshToken();
       if (refreshed) {
         try {
@@ -158,12 +155,11 @@ export default function FocusScreen() {
           newSessionId = session.id;
           setSessionId(session.id);
         } catch {
-          // Offline mode: still run timer locally
+          // Offline mode
         }
       }
     }
 
-    // Now read (possibly refreshed) tokens and pass to Kotlin layer
     const token = await AsyncStorage.getItem('zen_capsule_token');
     const refresh = await AsyncStorage.getItem('zen_capsule_refresh');
     if (token) setAuthToken(token);
@@ -172,10 +168,10 @@ export default function FocusScreen() {
   };
 
   const stopFocus = () => {
-    Alert.alert('End Session?', 'Are you sure you want to stop focusing?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('focus.endSessionTitle'), t('focus.endSessionMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Stop',
+        text: t('focus.stop'),
         style: 'destructive',
         onPress: () => {
           setIsRunning(false);
@@ -213,7 +209,7 @@ export default function FocusScreen() {
           {isRunning ? formatTime(remainingSeconds) : formatTime(selectedMinutes * 60)}
         </Text>
         {isRunning && (
-          <Text style={styles.progressText}>{Math.round(progress * 100)}% complete</Text>
+          <Text style={styles.progressText}>{Math.round(progress * 100)}{t('focus.complete')}</Text>
         )}
       </Animated.View>
 
@@ -231,7 +227,6 @@ export default function FocusScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-            {/* Custom button */}
             <TouchableOpacity
               style={[styles.presetButton, activePreset === CUSTOM_KEY && styles.presetButtonActive]}
               onPress={selectCustom}>
@@ -243,7 +238,6 @@ export default function FocusScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Custom input row */}
           {showCustomInput && (
             <View style={styles.customRow}>
               <TextInput
@@ -258,9 +252,9 @@ export default function FocusScreen() {
                 onSubmitEditing={confirmCustom}
                 returnKeyType="done"
               />
-              <Text style={styles.customUnit}>min</Text>
+              <Text style={styles.customUnit}>{t('focus.min')}</Text>
               <TouchableOpacity style={styles.customConfirm} onPress={confirmCustom}>
-                <Text style={styles.customConfirmText}>Set</Text>
+                <Text style={styles.customConfirmText}>{t('focus.set')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -271,14 +265,12 @@ export default function FocusScreen() {
       <TouchableOpacity
         style={[styles.mainButton, isRunning && styles.stopButton]}
         onPress={isRunning ? stopFocus : startFocus}>
-        <Text style={styles.mainButtonText}>{isRunning ? 'End Session' : 'Start Focus'}</Text>
+        <Text style={styles.mainButtonText}>{isRunning ? t('focus.endSession') : t('focus.startFocus')}</Text>
       </TouchableOpacity>
 
       {/* Status */}
       <Text style={styles.statusText}>
-        {isRunning
-          ? '🧘 Digital barrier active — distractions blocked'
-          : 'Tap to begin your focus session'}
+        {isRunning ? t('focus.statusActive') : t('focus.statusIdle')}
       </Text>
     </KeyboardAvoidingView>
   );

@@ -6,6 +6,10 @@ dist/
 .claude/
 .vscode
 
+# Release keystore (NEVER commit)
+*.keystore
+!packages/mobile/android/app/debug.keystore
+
 # Android build artifacts
 packages/mobile/android/app/src/main/assets/
 packages/mobile/android/app/src/main/res/drawable-*/node_modules_*

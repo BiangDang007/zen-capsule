@@ -8,11 +8,13 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { api } from '../services/api';
 import type { FocusSession } from '@zen-capsule/shared';
 
 export default function HistoryScreen() {
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,8 @@ export default function HistoryScreen() {
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleDateString('zh-TW', {
+    const locale = i18n.language === 'ar' ? 'ar' : i18n.language === 'zh-TW' ? 'zh-TW' : 'en-US';
+    return d.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -73,13 +76,13 @@ export default function HistoryScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Text style={styles.headerTitle}>Session History</Text>
+      <Text style={styles.headerTitle}>{t('history.title')}</Text>
 
       {/* Stats Header */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{sessions.length}</Text>
-          <Text style={styles.statLabel}>Sessions</Text>
+          <Text style={styles.statLabel}>{t('history.sessions')}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>
@@ -87,7 +90,7 @@ export default function HistoryScreen() {
               ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
               : `${totalMinutes}m`}
           </Text>
-          <Text style={styles.statLabel}>Total Focus</Text>
+          <Text style={styles.statLabel}>{t('history.totalFocus')}</Text>
         </View>
       </View>
 
@@ -105,10 +108,8 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyText}>尚無紀錄</Text>
-            <Text style={styles.emptySubtext}>
-              開始第一次專注吧！
-            </Text>
+            <Text style={styles.emptyText}>{t('history.noRecords')}</Text>
+            <Text style={styles.emptySubtext}>{t('history.noRecordsHint')}</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -127,7 +128,7 @@ export default function HistoryScreen() {
                   {formatDate(item.startedAt)}
                 </Text>
                 <Text style={styles.sessionDuration}>
-                  {isCompleted ? `${minutes} 分鐘` : '進行中'}
+                  {isCompleted ? t('history.duration', { minutes }) : t('history.inProgress')}
                 </Text>
               </View>
 
@@ -141,20 +142,20 @@ export default function HistoryScreen() {
                     styles.statusText,
                     isCompleted ? styles.statusComplete : styles.statusActive,
                   ]}>
-                    {isCompleted ? 'Completed' : 'Active'}
+                    {isCompleted ? t('history.completed') : t('history.active')}
                   </Text>
                 </View>
 
                 {isCompleted && intercepted > 0 && (
                   <View style={styles.interceptBadge}>
                     <Text style={styles.interceptText}>
-                      📬 攔截 {intercepted} 則
+                      📬 {t('history.intercepted', { count: intercepted })}
                     </Text>
                   </View>
                 )}
 
                 {isCompleted && (
-                  <Text style={styles.tapHint}>點擊查看 ▸</Text>
+                  <Text style={styles.tapHint}>{t('history.tapToView')}</Text>
                 )}
               </View>
             </TouchableOpacity>
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
     color: '#E8712A',
   },
   interceptBadge: {
-    marginLeft: 8,
+    marginStart: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tapHint: {
-    marginLeft: 'auto',
+    marginStart: 'auto',
     fontSize: 12,
     color: '#C4B098',
   },

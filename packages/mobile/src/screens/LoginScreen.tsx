@@ -10,9 +10,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const { signIn, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +23,7 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
+      Alert.alert(t('common.error'), t('login.errorBoth'));
       return;
     }
     setLoading(true);
@@ -32,7 +34,7 @@ export default function LoginScreen() {
         await signIn(email.trim(), password);
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Something went wrong');
+      Alert.alert(t('common.error'), err.message || t('login.errorGeneric'));
     } finally {
       setLoading(false);
     }
@@ -46,15 +48,15 @@ export default function LoginScreen() {
         {/* Logo / Title */}
         <View style={styles.logoContainer}>
           <Text style={styles.logoIcon}>🧘</Text>
-          <Text style={styles.title}>Zen Capsule</Text>
-          <Text style={styles.subtitle}>Build your digital barrier</Text>
+          <Text style={styles.title}>{t('login.title')}</Text>
+          <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder={t('login.email')}
             placeholderTextColor="#A89880"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -63,7 +65,7 @@ export default function LoginScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder={t('login.password')}
             placeholderTextColor="#A89880"
             secureTextEntry
             value={password}
@@ -78,7 +80,7 @@ export default function LoginScreen() {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>
-                {isRegister ? 'Sign Up' : 'Sign In'}
+                {isRegister ? t('login.signUp') : t('login.signIn')}
               </Text>
             )}
           </TouchableOpacity>
@@ -87,9 +89,7 @@ export default function LoginScreen() {
             onPress={() => setIsRegister(!isRegister)}
             style={styles.toggleButton}>
             <Text style={styles.toggleText}>
-              {isRegister
-                ? 'Already have an account? Sign In'
-                : "Don't have an account? Sign Up"}
+              {isRegister ? t('login.hasAccount') : t('login.noAccount')}
             </Text>
           </TouchableOpacity>
         </View>

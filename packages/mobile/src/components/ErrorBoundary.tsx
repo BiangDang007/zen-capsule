@@ -1,7 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { withTranslation, WithTranslation } from 'react-i18next';
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode;
 }
 
@@ -10,7 +11,7 @@ interface State {
   error: Error | null;
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -21,7 +22,6 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // In production, send to error reporting service
     console.error('ErrorBoundary caught:', error, errorInfo);
   }
 
@@ -31,15 +31,14 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const { t } = this.props;
       return (
         <View style={styles.container}>
           <Text style={styles.icon}>⚠️</Text>
-          <Text style={styles.title}>發生錯誤</Text>
-          <Text style={styles.message}>
-            App 遇到了問題，請重試
-          </Text>
+          <Text style={styles.title}>{t('error.title')}</Text>
+          <Text style={styles.message}>{t('error.message')}</Text>
           <TouchableOpacity style={styles.button} onPress={this.handleRetry}>
-            <Text style={styles.buttonText}>重試</Text>
+            <Text style={styles.buttonText}>{t('error.retry')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -48,6 +47,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default withTranslation()(ErrorBoundary);
 
 const styles = StyleSheet.create({
   container: {

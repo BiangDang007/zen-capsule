@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -15,8 +16,8 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const HistoryStack = createNativeStackNavigator();
 
-// History tab has its own stack: list → detail (break report)
 function HistoryStackScreen() {
+  const { t } = useTranslation();
   return (
     <HistoryStack.Navigator>
       <HistoryStack.Screen
@@ -28,7 +29,7 @@ function HistoryStackScreen() {
         name="SessionDetail"
         component={BreakReportScreen}
         options={{
-          title: '攔截報告',
+          title: t('breakReport.interceptReport'),
           headerStyle: { backgroundColor: '#FFF5EB' },
           headerTintColor: '#E8712A',
           headerTitleStyle: { color: '#2D1B0E' },
@@ -39,6 +40,7 @@ function HistoryStackScreen() {
 }
 
 function MainTabs() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -56,9 +58,9 @@ function MainTabs() {
         name="Focus"
         component={FocusScreen}
         options={{
-          title: 'Focus',
+          title: t('nav.focus'),
           headerTitle: '🧘 Zen Capsule',
-          tabBarLabel: 'Focus',
+          tabBarLabel: t('nav.focus'),
           tabBarIcon: ({ color }) => (
             <TabIcon label="🎯" color={color} />
           ),
@@ -68,9 +70,10 @@ function MainTabs() {
         name="History"
         component={HistoryStackScreen}
         options={{
-          title: 'History',
-          headerTitle: 'Session History',
+          title: t('nav.history'),
+          headerTitle: t('history.title'),
           headerShown: false,
+          tabBarLabel: t('nav.history'),
           tabBarIcon: ({ color }) => (
             <TabIcon label="📊" color={color} />
           ),
@@ -80,8 +83,9 @@ function MainTabs() {
         name="Settings"
         component={SettingsScreen}
         options={{
-          title: 'Settings',
-          headerTitle: 'Settings',
+          title: t('nav.settings'),
+          headerTitle: t('nav.settings'),
+          tabBarLabel: t('nav.settings'),
           tabBarIcon: ({ color }) => (
             <TabIcon label="⚙️" color={color} />
           ),
@@ -91,7 +95,6 @@ function MainTabs() {
   );
 }
 
-// Simple emoji-based tab icon (replace with vector icons later)
 function TabIcon({ label }: { label: string; color: string }) {
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
