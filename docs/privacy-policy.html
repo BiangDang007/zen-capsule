@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zen Capsule — Privacy Policy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #FFF5EB;
+      color: #2D1B0E;
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 { color: #E8712A; font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: #7A6652; font-size: 14px; margin-bottom: 32px; }
+    h2 { color: #E8712A; font-size: 18px; margin-top: 28px; margin-bottom: 12px; }
+    p, li { color: #2D1B0E; font-size: 15px; margin-bottom: 12px; }
+    ul { padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid #E8D5C0; color: #A89880; font-size: 13px; }
+    a { color: #E8712A; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <p class="subtitle">Zen Capsule &mdash; Last updated: March 30, 2026</p>
+
+    <h2>1. Information We Collect</h2>
+    <p>When you use Zen Capsule, we collect the following information:</p>
+    <ul>
+      <li><strong>Account information:</strong> Email address and encrypted password when you register.</li>
+      <li><strong>Notification content:</strong> During active focus sessions, intercepted notification titles and preview text are temporarily sent to our server for AI urgency analysis.</li>
+      <li><strong>Usage data:</strong> Focus session start/end times, duration, and the number of intercepted notifications.</li>
+      <li><strong>User preferences:</strong> Whitelist contacts, app rules, and language settings.</li>
+    </ul>
+
+    <h2>2. How We Use Your Information</h2>
+    <ul>
+      <li><strong>Urgency analysis:</strong> Notification content is analyzed by AI (Claude by Anthropic) to determine if a message is urgent enough to break through your focus session.</li>
+      <li><strong>Session reports:</strong> We generate break reports so you can review what was blocked during your focus time.</li>
+      <li><strong>Service improvement:</strong> Anonymized, aggregated usage statistics help us improve the app.</li>
+    </ul>
+
+    <h2>3. Data Storage and Retention</h2>
+    <ul>
+      <li>Notification content used for AI analysis is stored as behavior logs associated with your focus sessions. These logs are used to generate your break reports and improve AI accuracy based on your feedback.</li>
+      <li>Account data is stored securely in a PostgreSQL database hosted on Railway.</li>
+      <li>Passwords are hashed using bcrypt and never stored in plain text.</li>
+      <li>When you delete your account, all associated data is permanently removed.</li>
+    </ul>
+
+    <h2>4. Third-Party Services</h2>
+    <ul>
+      <li><strong>Anthropic (Claude AI):</strong> Notification content is sent to Anthropic's API for urgency analysis. Anthropic's privacy policy applies to this processing. Anthropic does not use API inputs to train models.</li>
+      <li><strong>Railway:</strong> Our backend infrastructure is hosted on Railway.</li>
+    </ul>
+    <p>We do not use any advertising SDKs, analytics trackers, or sell your data to third parties.</p>
+
+    <h2>5. Permissions</h2>
+    <ul>
+      <li><strong>Notification Access:</strong> Required to intercept and analyze incoming notifications during focus sessions. This is the core functionality of the app.</li>
+      <li><strong>Internet:</strong> Required to communicate with our backend for AI analysis and account management.</li>
+      <li><strong>Vibrate:</strong> Used to alert you when an urgent notification breaks through.</li>
+    </ul>
+
+    <h2>6. Data Security</h2>
+    <p>We implement industry-standard security measures including:</p>
+    <ul>
+      <li>HTTPS encryption for all data in transit</li>
+      <li>bcrypt password hashing</li>
+      <li>JWT-based authentication with short-lived access tokens (15 minutes)</li>
+      <li>Rate limiting on all API endpoints</li>
+      <li>Input validation and sanitization to prevent injection attacks</li>
+    </ul>
+
+    <h2>7. Your Rights</h2>
+    <ul>
+      <li><strong>Access:</strong> You can view your session history and break reports within the app.</li>
+      <li><strong>Deletion:</strong> You can permanently delete your account and all associated data from the Settings screen.</li>
+      <li><strong>Control:</strong> You can configure whitelist contacts and app rules to control what is analyzed.</li>
+    </ul>
+
+    <h2>8. Children's Privacy</h2>
+    <p>Zen Capsule is not directed at children under 13. We do not knowingly collect information from children under 13.</p>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will notify users of significant changes through the app or via email.</p>
+
+    <h2>10. Contact Us</h2>
+    <p>If you have questions about this Privacy Policy, please contact us at:</p>
+    <p><a href="mailto:zencapsule.app@gmail.com">zencapsule.app@gmail.com</a></p>
+
+    <div class="footer">
+      <p>&copy; 2026 Zen Capsule. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

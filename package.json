@@ -13,5 +13,8 @@
     "db:studio": "npm -w packages/backend run db:studio",
     "build:extension": "npm -w packages/extension run build",
     "dev:extension": "npm -w packages/extension run dev"
+  },
+  "devDependencies": {
+    "@react-native/metro-config": "^0.84.1"
   }
 }
