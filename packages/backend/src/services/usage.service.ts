@@ -68,13 +68,18 @@ export async function getTodayUsage(userId: string) {
 }
 
 export async function getUserLimits(userId: string) {
+  const effectivePlan = await getEffectivePlan(userId)
+  return { plan: effectivePlan, limits: PLAN_LIMITS[effectivePlan] }
+}
+
+/** Returns the user's effective plan, treating expired PRO as FREE. */
+export async function getEffectivePlan(userId: string): Promise<'FREE' | 'PRO'> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { plan: true, planExpiresAt: true },
   })
-  let effectivePlan: 'FREE' | 'PRO' = 'FREE'
   if (user?.plan === 'PRO' && user.planExpiresAt && user.planExpiresAt > new Date()) {
-    effectivePlan = 'PRO'
+    return 'PRO'
   }
-  return { plan: effectivePlan, limits: PLAN_LIMITS[effectivePlan] }
+  return 'FREE'
 }

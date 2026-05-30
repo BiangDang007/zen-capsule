@@ -10,10 +10,13 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -35,7 +38,7 @@ class ZenNotificationListener : NotificationListenerService() {
             get() = if (com.zencapsuleapp.BuildConfig.DEBUG) {
                 "http://10.0.2.2:3001/api/v1"
             } else {
-                "https://zen-capsule-backend-production.up.railway.app/api/v1"
+                "https://zen-capsule-fullstack-production.up.railway.app/api/v1"
             }
 
         // System / own packages that must never be intercepted
@@ -75,10 +78,24 @@ class ZenNotificationListener : NotificationListenerService() {
                     synchronized(senderCounts) {
                         senderCounts.clear()
                     }
+                    synchronized(pendingBatch) {
+                        pendingBatch.clear()
+                    }
+                } else {
+                    // Session ended → flush any queued (PRO) messages one last time
+                    onSessionEndFlush?.invoke()
                 }
             }
         var authToken: String? = null
         var refreshToken: String? = null
+        // PRO users get AI; FREE users rely on on-device keyword/rule handling only.
+        var isPro = false
+        // Non-keyword notifications queued during a PRO session, flushed in one
+        // batch every ~10 minutes (and on session end) to cut Claude API cost.
+        val pendingBatch = mutableListOf<QueuedItem>()
+        // Set by the running service instance so the companion setter can trigger
+        // a final flush when focus ends.
+        var onSessionEndFlush: (() -> Unit)? = null
         var interceptedNotifications = mutableListOf<InterceptedNotification>()
         var onNotificationIntercepted: ((InterceptedNotification) -> Unit)? = null
         var onBreakthroughTriggered: ((InterceptedNotification) -> Unit)? = null
@@ -92,6 +109,8 @@ class ZenNotificationListener : NotificationListenerService() {
 
     // Bounded thread pool instead of unbounded Thread per notification
     private val executor = Executors.newFixedThreadPool(3)
+    // Periodic flusher for the PRO batch queue (every 10 minutes)
+    private val batchScheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
 
     data class InterceptedNotification(
         val packageName: String,
@@ -104,10 +123,31 @@ class ZenNotificationListener : NotificationListenerService() {
         val urgencyReason: String = ""
     )
 
+    // A notification queued for the next 10-minute batch (PRO only)
+    data class QueuedItem(
+        val notif: InterceptedNotification,
+        val senderName: String,
+        val repeatCount: Int
+    )
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        // Final flush when a session ends (invoked from the isFocusing setter)
+        onSessionEndFlush = { executor.execute { flushBatch() } }
+        // Periodic batch flush — only does work while focusing and queue non-empty
+        batchScheduler.scheduleWithFixedDelay({
+            if (isFocusing) {
+                try { flushBatch() } catch (e: Exception) { Log.w(TAG, "scheduled flush error: ${e.message}") }
+            }
+        }, 10, 10, TimeUnit.MINUTES)
         Log.d(TAG, "ZenNotificationListener created — monitoring ALL apps")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        batchScheduler.shutdownNow()
+        executor.shutdownNow()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -158,6 +198,25 @@ class ZenNotificationListener : NotificationListenerService() {
         cancelNotification(sbn.key)
 
         executor.execute {
+            val combined = "$title $text".lowercase()
+            val hasKeyword = URGENT_KEYWORDS.any { combined.contains(it.lowercase()) }
+
+            // PRO + no obvious keyword → defer to the 10-minute batch (saves API cost).
+            // Keyword hits still break through instantly below; FREE users fall through
+            // to a single log-only call (no Claude).
+            if (isPro && !hasKeyword) {
+                synchronized(pendingBatch) {
+                    pendingBatch.add(QueuedItem(notification, senderName, repeatCount))
+                }
+                synchronized(interceptedNotifications) {
+                    interceptedNotifications.add(notification)
+                    if (interceptedNotifications.size > 200) interceptedNotifications.removeAt(0)
+                }
+                onNotificationIntercepted?.invoke(notification)
+                Log.d(TAG, "🗂 Queued for batch [$appName] — $title (queue=${pendingBatch.size})")
+                return@execute
+            }
+
             val urgencyResult = checkUrgency(
                 title, text, appName, packageName, senderName, repeatCount
             )
@@ -183,6 +242,86 @@ class ZenNotificationListener : NotificationListenerService() {
                 Log.d(TAG, "🚨 BREAKTHROUGH [$appName] ${urgencyResult.score}pt — $title")
             } else {
                 Log.d(TAG, "🛡 Blocked [$appName] ${urgencyResult.score}pt — $title")
+            }
+        }
+    }
+
+    // ── Batch flush (PRO) ──────────────────────────────────────────────────────
+    // Sends all queued notifications to /ai/analyse-batch in ONE request, then
+    // shows breakthroughs for any the AI marks urgent.
+    private fun flushBatch() {
+        val items: List<QueuedItem> = synchronized(pendingBatch) {
+            if (pendingBatch.isEmpty()) return
+            val copy = ArrayList(pendingBatch)
+            pendingBatch.clear()
+            copy
+        }
+        val token = authToken ?: return
+        Log.d(TAG, "Flushing batch of ${items.size} notifications")
+        try {
+            doBatchRequest(token, items)
+        } catch (e: TokenExpiredException) {
+            val newToken = refreshAccessToken()
+            if (newToken != null) {
+                authToken = newToken
+                try { doBatchRequest(newToken, items) }
+                catch (e2: Exception) { Log.w(TAG, "Batch retry failed: ${e2.message}") }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Batch flush failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
+    private fun doBatchRequest(token: String, items: List<QueuedItem>) {
+        val url = URL("$API_BASE/ai/analyse-batch")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 4000
+        conn.readTimeout = 20000  // a batch Claude call can take a few seconds
+        conn.doOutput = true
+
+        val arr = JSONArray()
+        for (q in items) {
+            val n = q.notif
+            arr.put(JSONObject().apply {
+                put("content", if (n.title.isNotEmpty()) "${n.title}: ${n.text}" else n.text)
+                put("senderName", q.senderName)
+                put("senderContact", q.senderName)
+                put("subject", n.title)
+                put("preview", n.text)
+                put("appName", n.appName)
+                put("packageName", n.packageName)
+                put("repeatCount", q.repeatCount)
+            })
+        }
+        val body = JSONObject().apply { put("items", arr) }
+        conn.outputStream.bufferedWriter().use { it.write(body.toString()) }
+
+        val code = conn.responseCode
+        if (code == 401) { conn.disconnect(); throw TokenExpiredException() }
+        if (code == 403) { conn.disconnect(); Log.d(TAG, "Batch 403 (FREE) — skipping AI"); return }
+        if (code !in 200..299) {
+            val err = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { null }
+            Log.w(TAG, "Batch API returned $code: $err")
+            conn.disconnect(); return
+        }
+
+        val response = conn.inputStream.bufferedReader().readText()
+        conn.disconnect()
+        val results = JSONObject(response).optJSONArray("results") ?: return
+        for (i in 0 until results.length()) {
+            val r = results.getJSONObject(i)
+            if (i < items.size && r.optBoolean("shouldBreakthrough", false)) {
+                val updated = items[i].notif.copy(
+                    isUrgent = true,
+                    urgencyScore = r.optInt("score", 0),
+                    urgencyReason = r.optString("reason", "AI analysis")
+                )
+                showBreakthroughNotification(updated)
+                onBreakthroughTriggered?.invoke(updated)
+                Log.d(TAG, "🚨 BATCH BREAKTHROUGH [${updated.appName}] ${updated.urgencyScore}pt — ${updated.title}")
             }
         }
     }

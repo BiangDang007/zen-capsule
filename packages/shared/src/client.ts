@@ -15,6 +15,8 @@ import type {
 export interface ApiClientConfig {
   baseUrl: string
   getToken: () => Promise<string | null> | string | null
+  /** Called on a 401. Return true if a token refresh succeeded (request is retried once). */
+  onUnauthorized?: () => Promise<boolean>
 }
 
 export interface ApiClient {
@@ -48,13 +50,14 @@ export interface ApiClient {
   }
   billing: {
     status(): Promise<BillingStatus>
+    devUpgrade(): Promise<{ ok: true; plan: 'PRO'; planExpiresAt: string }>
   }
 }
 
 export function createApiClient(config: ApiClientConfig): ApiClient {
-  const { baseUrl, getToken } = config
+  const { baseUrl, getToken, onUnauthorized } = config
 
-  async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  async function request<T>(endpoint: string, options: RequestInit = {}, _retried = false): Promise<T> {
     const token = await getToken()
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -66,6 +69,12 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
     const url = `${baseUrl}${API_PREFIX}${endpoint}`
     const res = await fetch(url, { ...options, headers })
+
+    // Auto-refresh once on 401, then retry with the new token
+    if (res.status === 401 && onUnauthorized && !_retried) {
+      const refreshed = await onUnauthorized()
+      if (refreshed) return request<T>(endpoint, options, true)
+    }
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
@@ -115,6 +124,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     },
     billing: {
       status: () => request(ENDPOINTS.BILLING_STATUS),
+      devUpgrade: () => post(ENDPOINTS.BILLING_DEV_UPGRADE, {}),
     },
   }
 }

@@ -25,9 +25,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
     console.error(`❌ Missing required env vars: ${missing.join(', ')}`)
     process.exit(1)
   }
-  if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET === 'dev-secret-change-me') {
-    console.error('❌ JWT_SECRET must not use the default dev value in production')
-    process.exit(1)
+  if (process.env.NODE_ENV === 'production') {
+    const placeholders = ['dev-secret-change-me', 'change-me-in-production', 'zen-capsule-super-secret-key-2025']
+    if (placeholders.includes(process.env.JWT_SECRET!) || (process.env.JWT_SECRET?.length ?? 0) < 32) {
+      console.error('❌ JWT_SECRET must be a strong (>=32 char) non-placeholder value in production')
+      process.exit(1)
+    }
+    if (placeholders.includes(process.env.EXPORT_KEY ?? '')) {
+      console.error('❌ EXPORT_KEY must not use a placeholder value in production')
+      process.exit(1)
+    }
   }
 }
 

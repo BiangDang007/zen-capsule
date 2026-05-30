@@ -25,7 +25,8 @@ react {
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
-    // nodeExecutableAndArgs = ["node"]
+    nodeExecutableAndArgs = ["/usr/local/bin/node"]
+    hermesCommand = "${rootProject.projectDir}/../../../node_modules/hermes-compiler/hermesc/osx-bin/hermesc"
     //
     //   The command to run when bundling. By default is 'bundle'
     // bundleCommand = "ram-bundle"
@@ -82,8 +83,8 @@ android {
         applicationId "com.zencapsuleapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 4
+        versionName "1.2.1"
     }
     signingConfigs {
         debug {

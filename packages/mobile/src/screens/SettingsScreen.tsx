@@ -19,6 +19,7 @@ import type {
   SenderRelationship,
   AppRule,
   AppRuleAction,
+  BillingStatus,
 } from '@zen-capsule/shared';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -87,6 +88,10 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [urgentOnlyMode, setUrgentOnlyMode] = useState(true);
 
+  // Billing / plan
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+
   // Whitelist
   const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
   const [newSenderName, setNewSenderName] = useState('');
@@ -112,6 +117,7 @@ export default function SettingsScreen() {
       const doFetch = () => {
         api.ai.getWhitelist().then(res => setWhitelist(res.whitelist)).catch(() => {});
         api.ai.getAppRules().then(res => setAppRules(res.rules)).catch(() => {});
+        api.billing.status().then(setBilling).catch(() => {});
       };
 
       if (!hasMounted.current) {
@@ -214,6 +220,24 @@ export default function SettingsScreen() {
     }
   };
 
+  // ── Billing ──────────────────────────────────────────────────────────────
+
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    try {
+      // DEV: flips the account to PRO instantly. In production this button will
+      // launch the Google Play / RevenueCat purchase flow instead.
+      await api.billing.devUpgrade();
+      const status = await api.billing.status();
+      setBilling(status);
+      Alert.alert('已升級 PRO 🎉', 'AI 智慧穿透已啟用。（測試升級；正式版將透過 Google Play 訂閱付款）');
+    } catch (err: any) {
+      Alert.alert(t('common.error'), err.message);
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   // ── Account management ──────────────────────────────────────────────────
 
   const handleChangePassword = async () => {
@@ -294,6 +318,43 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Text style={styles.label}>{t('common.email')}</Text>
         <Text style={styles.value}>{user?.email || '—'}</Text>
+      </View>
+
+      {/* Plan / Billing */}
+      <Text style={styles.sectionTitle}>方案</Text>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.rowLeft}>
+            <Text style={styles.label}>
+              {billing?.plan === 'PRO' ? '✨ Zen Capsule PRO' : '免費版'}
+            </Text>
+            <Text style={styles.hint}>
+              {billing?.plan === 'PRO'
+                ? `AI 智慧穿透已啟用${billing.planExpiresAt ? ` · 到期 ${new Date(billing.planExpiresAt).toLocaleDateString()}` : ''}`
+                : '免費版僅用端上關鍵字 / 規則封鎖。升級 PRO 解鎖 AI 智慧穿透與每 10 分鐘批次摘要。'}
+            </Text>
+            {billing && (
+              <Text style={styles.hint}>
+                今日 AI 用量：{billing.today.analyses.used}/{billing.today.analyses.limit}
+              </Text>
+            )}
+          </View>
+          {billing?.plan === 'PRO' && (
+            <View style={styles.relationBadge}>
+              <Text style={styles.relationBadgeText}>PRO</Text>
+            </View>
+          )}
+        </View>
+        {billing?.plan !== 'PRO' && (
+          <TouchableOpacity
+            style={[styles.addButton, upgrading && { opacity: 0.6 }]}
+            disabled={upgrading}
+            onPress={handleUpgrade}>
+            <Text style={styles.addButtonText}>
+              {upgrading ? '升級中…' : '升級 PRO（$4.99 / 月）'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Preferences */}

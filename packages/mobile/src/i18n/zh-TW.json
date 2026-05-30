@@ -38,7 +38,8 @@
     "notifPermTitle": "通知權限",
     "notifPermMsg": "Zen Capsule 需要通知權限，以便在專注時提醒你緊急訊息。",
     "allow": "允許",
-    "deny": "拒絕"
+    "deny": "拒絕",
+    "goalTemplate": "專注 {{minutes}} 分鐘"
   },
   "history": {
     "title": "專注紀錄",

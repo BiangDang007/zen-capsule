@@ -203,7 +203,7 @@ export async function authRoutes(app: FastifyInstance) {
 // ── Helpers ─────────────────────────────────────────────
 async function issueTokens(app: FastifyInstance, userId: string, deviceId?: string) {
   const accessToken = app.jwt.sign(
-    { sub: userId },
+    { sub: userId, type: 'access' },
     { expiresIn: process.env.JWT_ACCESS_EXPIRES ?? '15m' }
   )
   const refreshToken = app.jwt.sign(

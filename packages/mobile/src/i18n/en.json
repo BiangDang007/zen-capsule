@@ -38,7 +38,8 @@
     "notifPermTitle": "Notification Permission",
     "notifPermMsg": "Zen Capsule needs notification access to alert you about urgent messages during focus sessions.",
     "allow": "Allow",
-    "deny": "Deny"
+    "deny": "Deny",
+    "goalTemplate": "Focus {{minutes}}min"
   },
   "history": {
     "title": "Session History",

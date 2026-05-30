@@ -38,7 +38,8 @@
     "notifPermTitle": "إذن الإشعارات",
     "notifPermMsg": "يحتاج Zen Capsule إلى إذن الإشعارات لتنبيهك بالرسائل العاجلة أثناء جلسات التركيز.",
     "allow": "السماح",
-    "deny": "رفض"
+    "deny": "رفض",
+    "goalTemplate": "تركيز {{minutes}} دقيقة"
   },
   "history": {
     "title": "سجل الجلسات",

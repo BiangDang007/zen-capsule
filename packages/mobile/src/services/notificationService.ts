@@ -78,6 +78,14 @@ export function setRefreshToken(token: string | null): void {
 }
 
 /**
+ * Tell the native listener whether the user is PRO (enables 10-min AI batching).
+ */
+export function setPro(isPro: boolean): void {
+  if (!isAndroid) return;
+  ZenNotificationModule.setPro(isPro);
+}
+
+/**
  * Get all intercepted notifications
  */
 export async function getInterceptedNotifications(): Promise<InterceptedNotification[]> {

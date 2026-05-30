@@ -77,6 +77,16 @@ class ZenNotificationModule(reactContext: ReactApplicationContext) :
     }
 
     /**
+     * Set whether the user is PRO. PRO → non-keyword notifications are batched and
+     * analysed by AI every ~10 min. FREE → on-device keyword/rule handling only.
+     */
+    @ReactMethod
+    fun setPro(isPro: Boolean) {
+        android.util.Log.d("ZenNotificationModule", "setPro($isPro)")
+        ZenNotificationListener.isPro = isPro
+    }
+
+    /**
      * Required by NativeEventEmitter on Android (RN 0.65+)
      */
     @ReactMethod

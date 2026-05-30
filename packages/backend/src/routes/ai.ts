@@ -2,8 +2,8 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { analyseUrgency, summariseEmails } from '../services/urgency.service.js'
-import { checkAndIncrement, LimitExceededError } from '../services/usage.service.js'
+import { analyseUrgency, analyseUrgencyBatch, summariseEmails } from '../services/urgency.service.js'
+import { checkAndIncrement, LimitExceededError, getEffectivePlan } from '../services/usage.service.js'
 
 const analyseSchema = z.object({
   content: z.string().min(1).max(2000),
@@ -17,6 +17,19 @@ const analyseSchema = z.object({
   // When set, skip Claude AI and record directly (keyword match on client)
   keywordScore: z.number().int().min(0).max(100).optional(),
   keywordReason: z.string().max(200).optional(),
+})
+
+const batchAnalyseSchema = z.object({
+  items: z.array(z.object({
+    content: z.string().min(1).max(2000),
+    senderName: z.string().max(200).optional(),
+    senderContact: z.string().max(500).optional(),
+    subject: z.string().max(500).optional(),
+    preview: z.string().max(2000).optional(),
+    appName: z.string().max(100).optional(),
+    packageName: z.string().max(200).optional(),
+    repeatCount: z.number().int().min(0).max(999).optional(),
+  })).min(1).max(50),
 })
 
 const feedbackSchema = z.object({
@@ -44,6 +57,23 @@ const appRuleSchema = z.object({
   packageName: z.string().max(200).optional(),
   action: z.enum(['always_block', 'always_allow', 'ask_ai']),
 })
+
+// Server-side urgent keyword list (mirrors the Android client list). Used to
+// re-validate the client keyword fast-path so a client cannot fake urgency by
+// sending an arbitrary keywordScore.
+const SERVER_URGENT_KEYWORDS = [
+  '急', '緊急', '掛掉', '壞掉', '立刻', '馬上',
+  '失火', '火災', '修', '趕快', '出問題', '異常',
+  'crash', 'down', 'urgent', 'asap', 'emergency',
+  'critical', 'outage', 'incident',
+]
+function matchUrgentKeyword(text: string): string | null {
+  const lower = text.toLowerCase()
+  for (const kw of SERVER_URGENT_KEYWORDS) {
+    if (lower.includes(kw.toLowerCase())) return kw
+  }
+  return null
+}
 
 /** Verify the export admin key from Authorization header (not query param!) */
 function verifyExportKey(req: any, reply: any): boolean {
@@ -138,13 +168,20 @@ export async function aiRoutes(app: FastifyInstance) {
       }
     }
 
-    // ── Client-side keyword match: skip AI, record directly (saves API calls) ──
-    if (body.data.keywordScore != null) {
+    // ── Keyword fast-path ──────────────────────────────────────────────
+    // The client may flag an obvious urgent keyword to skip a Claude call, but we
+    // NEVER trust the client-supplied score: re-validate against a server-side
+    // keyword list and use a fixed server score. If no real keyword is present,
+    // fall through to full AI analysis (which consumes quota).
+    const serverKeyword = body.data.keywordScore != null
+      ? matchUrgentKeyword(`${body.data.subject ?? ''} ${body.data.content} ${body.data.preview ?? ''}`)
+      : null
+    if (serverKeyword) {
       const now = new Date()
-      const score = body.data.keywordScore
-      const shouldBreak = score >= 80
-      const category = score >= 80 ? 'critical' : score >= 50 ? 'important' : 'normal'
-      const reason = body.data.keywordReason || 'Keyword match'
+      const score = 90              // server-fixed; client score is not trusted
+      const shouldBreak = true      // verified urgent keyword → breakthrough
+      const category = 'critical' as const
+      const reason = `Keyword match: ${serverKeyword}`
 
       const log = await prisma.$transaction(async (tx) => {
         await tx.focusSession.updateMany({
@@ -183,6 +220,54 @@ export async function aiRoutes(app: FastifyInstance) {
       return reply.send({
         result: { score, isUrgent: shouldBreak, shouldBreakthrough: shouldBreak, reason, category },
         logId: log.id,
+      })
+    }
+
+    // ── Plan gate: AI urgency analysis is a PRO feature ──────────────────
+    // FREE users rely entirely on on-device keyword/app-rule/whitelist handling
+    // (above + on the client). We never send their content to Claude, so free
+    // users cost zero tokens and leak nothing to the LLM.
+    const plan = await getEffectivePlan(userId)
+    if (plan !== 'PRO') {
+      const now = new Date()
+      const log = await prisma.$transaction(async (tx) => {
+        await tx.focusSession.updateMany({
+          where: { userId, endedAt: null },
+          data: { interceptCount: { increment: 1 } },
+        })
+        const activeSession = await tx.focusSession.findFirst({
+          where: { userId, endedAt: null },
+          orderBy: { startedAt: 'desc' },
+        })
+        return tx.behaviorLog.create({
+          data: {
+            userId,
+            senderEmail: body.data.senderContact,
+            senderName: body.data.senderName,
+            subject: body.data.subject || body.data.content.slice(0, 100),
+            preview: body.data.preview || body.data.content.slice(0, 200),
+            appName: body.data.appName,
+            packageName: body.data.packageName,
+            isWhitelisted: false,
+            repeatCount: body.data.repeatCount ?? 1,
+            hourOfDay: now.getHours(),
+            dayOfWeek: now.getDay(),
+            aiScore: 0,
+            aiCategory: 'normal',
+            aiShouldBreak: false,
+            aiReason: 'AI urgency analysis is a PRO feature',
+            modelVersion: 'free-no-ai',
+            focusSessionId: activeSession?.id,
+            focusMinute: activeSession
+              ? Math.floor((now.getTime() - activeSession.startedAt.getTime()) / 60000)
+              : null,
+          },
+        })
+      })
+      return reply.send({
+        result: { score: 0, isUrgent: false, shouldBreakthrough: false, reason: '免費版不含 AI 分析，訊息已攔截', category: 'normal' as const },
+        logId: log.id,
+        aiAvailable: false,
       })
     }
 
@@ -260,6 +345,92 @@ export async function aiRoutes(app: FastifyInstance) {
     })
 
     return reply.send({ result, logId: log.id })
+  })
+
+  // ── POST /ai/analyse-batch ──────────────────────────
+  // PRO-only. Analyses up to 50 queued messages in ONE Claude call (the client
+  // flushes its queue every ~10 min). Consumes just 1 'analyses' unit, not N.
+  app.post('/ai/analyse-batch', { ...auth, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub
+    const body = batchAnalyseSchema.safeParse(req.body)
+    if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
+
+    // AI is a PRO feature
+    const plan = await getEffectivePlan(userId)
+    if (plan !== 'PRO') return reply.status(403).send({ error: 'AI batch analysis is a PRO feature', code: 'PRO_REQUIRED' })
+
+    // One batch = one usage unit (the whole point of batching)
+    try {
+      await checkAndIncrement(userId, 'analyses')
+    } catch (err) {
+      return handleUsageError(err, reply)
+    }
+
+    // Fetch the user's whitelist once and match in memory (avoids N queries)
+    const whitelist = await prisma.whitelist.findMany({ where: { userId } })
+    const wlMatch = (contact?: string) =>
+      contact ? whitelist.find(w => w.contact.toLowerCase() === contact.toLowerCase()) : undefined
+
+    const now = new Date()
+    const results = await analyseUrgencyBatch(body.data.items.map(it => {
+      const wl = wlMatch(it.senderContact)
+      return {
+        content: it.content,
+        senderName: it.senderName,
+        senderContact: it.senderContact,
+        isWhitelisted: !!wl,
+        repeatCount: it.repeatCount ?? 1,
+        senderRelationship: (wl as any)?.relationship ?? undefined,
+        hourOfDay: now.getHours(),
+        appName: it.appName,
+      }
+    }))
+
+    // Persist all logs + bump the active session intercept count in one transaction
+    const out = await prisma.$transaction(async (tx) => {
+      await tx.focusSession.updateMany({
+        where: { userId, endedAt: null },
+        data: { interceptCount: { increment: body.data.items.length } },
+      })
+      const activeSession = await tx.focusSession.findFirst({
+        where: { userId, endedAt: null },
+        orderBy: { startedAt: 'desc' },
+      })
+      const created = []
+      for (let i = 0; i < body.data.items.length; i++) {
+        const it = body.data.items[i]
+        const r = results[i]
+        const wl = wlMatch(it.senderContact)
+        const log = await tx.behaviorLog.create({
+          data: {
+            userId,
+            senderEmail: it.senderContact,
+            senderName: it.senderName,
+            subject: it.subject || it.content.slice(0, 100),
+            preview: it.preview || it.content.slice(0, 200),
+            appName: it.appName,
+            packageName: it.packageName,
+            isWhitelisted: !!wl,
+            repeatCount: it.repeatCount ?? 1,
+            hourOfDay: now.getHours(),
+            dayOfWeek: now.getDay(),
+            aiScore: r.score,
+            aiCategory: r.category as any,
+            aiShouldBreak: r.shouldBreakthrough,
+            aiReason: r.reason,
+            modelVersion: 'claude-haiku-4-5-batch',
+            focusSessionId: activeSession?.id,
+            focusMinute: activeSession
+              ? Math.floor((now.getTime() - activeSession.startedAt.getTime()) / 60000)
+              : null,
+          },
+        })
+        created.push({ ...r, logId: log.id })
+      }
+      return created
+    })
+
+    return reply.send({ results: out })
   })
 
   // ── POST /ai/feedback ───────────────────────────────

@@ -17,6 +17,7 @@ export const ENDPOINTS = {
 
   // AI
   AI_ANALYSE: '/ai/analyse',
+  AI_ANALYSE_BATCH: '/ai/analyse-batch',
   AI_FEEDBACK: '/ai/feedback',
   AI_EXPORT: '/ai/export',
   AI_EXPORT_CSV: '/ai/export/csv',
@@ -30,6 +31,7 @@ export const ENDPOINTS = {
 
   // Billing
   BILLING_STATUS: '/billing/status',
+  BILLING_DEV_UPGRADE: '/billing/dev-upgrade',
 
   // Health
   HEALTH: '/health',

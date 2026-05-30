@@ -15,7 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, tryRefreshToken } from '../services/api';
-import { setFocusMode, setAuthToken, setRefreshToken } from '../services/notificationService';
+import { setFocusMode, setAuthToken, setRefreshToken, setPro } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PRESET_DURATIONS = [25, 45, 60, 90]; // minutes
@@ -144,14 +144,14 @@ export default function FocusScreen() {
 
     let newSessionId: string | null = null;
     try {
-      const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
+      const { session } = await api.focus.start({ goal: t('focus.goalTemplate', { minutes: selectedMinutes }) });
       newSessionId = session.id;
       setSessionId(session.id);
     } catch {
       const refreshed = await tryRefreshToken();
       if (refreshed) {
         try {
-          const { session } = await api.focus.start({ goal: `Focus ${selectedMinutes}min` });
+          const { session } = await api.focus.start({ goal: t('focus.goalTemplate', { minutes: selectedMinutes }) });
           newSessionId = session.id;
           setSessionId(session.id);
         } catch {
@@ -164,6 +164,15 @@ export default function FocusScreen() {
     const refresh = await AsyncStorage.getItem('zen_capsule_refresh');
     if (token) setAuthToken(token);
     if (refresh) setRefreshToken(refresh);
+
+    // Tell the native listener whether to use AI batching (PRO) or on-device only (FREE)
+    try {
+      const status = await api.billing.status();
+      setPro(status.plan === 'PRO');
+    } catch {
+      setPro(false);
+    }
+
     setFocusMode(true);
   };
 
