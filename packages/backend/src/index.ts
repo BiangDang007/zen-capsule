@@ -40,6 +40,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const app = Fastify({
   bodyLimit: 1024 * 100, // 100KB
+  // Railway terminates TLS at its edge proxy; trust X-Forwarded-For there so
+  // req.ip is the real client (rate limits / lockouts break without this).
+  trustProxy: process.env.NODE_ENV === 'production',
   logger: {
     transport:
       process.env.NODE_ENV === 'development'
@@ -49,7 +52,7 @@ const app = Fastify({
 })
 
 // ── 靜態檔案（前端 HTML）────────────────────────────────
-// public/index.html → http://localhost:3000/
+// public/index.html → http://localhost:3001/
 await app.register(staticFiles, {
   root: join(__dirname, '..', 'public'),
   prefix: '/',
@@ -92,7 +95,18 @@ app.addHook('onSend', async (_request, reply) => {
   reply.header('X-Content-Type-Options', 'nosniff')
   reply.header('X-Frame-Options', 'DENY')
   reply.header('X-XSS-Protection', '0')  // modern browsers use CSP instead
-  reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'")
+  reply.header('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '))
   if (process.env.NODE_ENV === 'production') {
     reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   }
@@ -134,7 +148,7 @@ app.setErrorHandler((error, request, reply) => {
 // ── Health check ──────────────────────────────────────
 app.get('/health', async () => {
   try {
-    await prisma.$queryRawUnsafe('SELECT 1')
+    await prisma.$queryRaw`SELECT 1`
     return { status: 'ok', db: 'connected', timestamp: new Date().toISOString() }
   } catch {
     return { status: 'degraded', db: 'disconnected', timestamp: new Date().toISOString() }
@@ -142,7 +156,7 @@ app.get('/health', async () => {
 })
 
 // ── Start ──────────────────────────────────────────────
-const port = parseInt(process.env.PORT ?? '3000')
+const port = parseInt(process.env.PORT ?? '3001')
 
 try {
   await app.listen({ port, host: '0.0.0.0' })

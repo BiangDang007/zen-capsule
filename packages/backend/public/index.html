@@ -3,1382 +3,309 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zen Capsule — 數位結界</title>
+<title>Zen Capsule 數位結界 — AI 守門的深度專注 App</title>
+<meta name="description" content="Zen Capsule 用 Claude AI 為你守門：專注時攔下所有通知，只讓真正緊急的訊息穿透。三維度緊急判斷、批次訊息摘要、跨裝置同步。Android App 與 Chrome 擴充功能。">
+<link rel="canonical" href="https://zen-capsule-fullstack-production.up.railway.app/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Zen Capsule 數位結界 — AI 守門的深度專注 App">
+<meta property="og:description" content="AI 為你守門，讓「溝通」與「執行」徹底分離。專注時攔下所有通知，只讓真正緊急的訊息穿透。">
+<meta property="og:url" content="https://zen-capsule-fullstack-production.up.railway.app/">
+<meta property="og:locale" content="zh_TW">
+<meta name="theme-color" content="#0d0b09">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&family=DM+Serif+Display:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0e0c0a;
-    --surface: #161310;
-    --amber: #d4884a;
-    --amber-dim: #8a5030;
-    --gold: #c9a96e;
-    --cream: #f0e8d8;
-    --muted: #6b5e50;
-    --text: #e8ddd0;
-    --border: rgba(212,136,74,0.15);
-  }
-
-  * { margin:0; padding:0; box-sizing:border-box; }
-
-  body {
-    font-family: 'Noto Serif TC', serif;
-    background: var(--bg);
-    color: var(--text);
-    overflow-x: hidden;
-    cursor: none;
-  }
-
-  /* Custom cursor */
-  .cursor {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--amber);
-    position: fixed;
-    pointer-events: none;
-    z-index: 9999;
-    transition: transform 0.15s ease;
-    mix-blend-mode: screen;
-  }
-  .cursor-ring {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: 1px solid rgba(212,136,74,0.4);
-    position: fixed;
-    pointer-events: none;
-    z-index: 9998;
-    transition: all 0.25s ease;
-  }
-
-  /* Background grain */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    opacity: 0.4;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* NAV */
-  nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    padding: 24px 48px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 100;
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(20px);
-    background: rgba(14,12,10,0.7);
-  }
-  .logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 22px;
-    color: var(--gold);
-    letter-spacing: 0.05em;
-  }
-  .logo span { font-style: italic; color: var(--amber); }
-  nav ul { list-style: none; display: flex; gap: 40px; }
-  nav ul a {
-    text-decoration: none;
-    color: var(--muted);
-    font-size: 13px;
-    letter-spacing: 0.1em;
-    font-family: 'Space Mono', monospace;
-    transition: color 0.3s;
-  }
-  nav ul a:hover { color: var(--amber); }
-  .nav-cta {
-    background: transparent;
-    border: 1px solid var(--amber-dim);
-    color: var(--amber) !important;
-    padding: 8px 20px;
-    border-radius: 2px;
-    transition: all 0.3s !important;
-  }
-  .nav-cta:hover { background: var(--amber) !important; color: var(--bg) !important; }
-
-  /* HERO */
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 120px 40px 80px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Radial glow */
-  .hero::after {
-    content: '';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(212,136,74,0.08) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .hero-tag {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.3em;
-    color: var(--amber);
-    text-transform: uppercase;
-    margin-bottom: 28px;
-    opacity: 0;
-    animation: fadeUp 0.8s 0.2s forwards;
-  }
-
-  .hero h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(52px, 8vw, 100px);
-    font-weight: 400;
-    line-height: 1.05;
-    color: var(--cream);
-    margin-bottom: 16px;
-    opacity: 0;
-    animation: fadeUp 0.8s 0.4s forwards;
-  }
-  .hero h1 em {
-    font-style: italic;
-    color: var(--amber);
-  }
-
-  .hero-sub {
-    font-size: 18px;
-    color: var(--muted);
-    max-width: 520px;
-    line-height: 1.8;
-    margin-bottom: 48px;
-    opacity: 0;
-    animation: fadeUp 0.8s 0.6s forwards;
-  }
-
-  .hero-stat {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--amber-dim);
-    margin-bottom: 56px;
-    opacity: 0;
-    animation: fadeUp 0.8s 0.7s forwards;
-  }
-  .hero-stat strong { color: var(--amber); font-size: 16px; }
-
-  .hero-btns {
-    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
-    opacity: 0;
-    animation: fadeUp 0.8s 0.8s forwards;
-  }
-
-  .btn-primary {
-    background: var(--amber);
-    color: var(--bg);
-    padding: 14px 36px;
-    border: none;
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    letter-spacing: 0.1em;
-    cursor: none;
-    transition: all 0.3s;
-    border-radius: 2px;
-  }
-  .btn-primary:hover { background: var(--gold); transform: translateY(-2px); }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--text);
-    padding: 14px 36px;
-    border: 1px solid var(--border);
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    letter-spacing: 0.1em;
-    cursor: none;
-    transition: all 0.3s;
-    border-radius: 2px;
-  }
-  .btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
-
-  /* DIVIDER */
-  .divider {
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--border), transparent);
-    margin: 0 auto;
-    max-width: 1200px;
-  }
-
-  /* SECTION BASE */
-  section {
-    padding: 100px 40px;
-    max-width: 1200px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-  }
-
-  .section-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.3em;
-    color: var(--amber);
-    text-transform: uppercase;
-    margin-bottom: 20px;
-  }
-
-  h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(32px, 4vw, 52px);
-    font-weight: 400;
-    color: var(--cream);
-    margin-bottom: 16px;
-    line-height: 1.15;
-  }
-  h2 em { font-style: italic; color: var(--amber); }
-
-  /* WORKFLOW PHASES */
-  .phases {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    margin-top: 60px;
-  }
-
-  .phase {
-    background: var(--surface);
-    padding: 40px 32px;
-    transition: background 0.3s;
-    position: relative;
-    overflow: hidden;
-  }
-  .phase::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--amber), transparent);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.4s;
-  }
-  .phase:hover::before { transform: scaleX(1); }
-  .phase:hover { background: #1a1612; }
-
-  .phase-num {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--amber-dim);
-    letter-spacing: 0.2em;
-    margin-bottom: 16px;
-  }
-  .phase h3 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 22px;
-    color: var(--cream);
-    margin-bottom: 8px;
-  }
-  .phase-sub {
-    font-size: 12px;
-    color: var(--amber);
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 0.1em;
-    margin-bottom: 20px;
-  }
-  .phase p {
-    font-size: 14px;
-    color: var(--muted);
-    line-height: 1.8;
-  }
-
-  .feature-pills {
-    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px;
-  }
-  .pill {
-    font-size: 11px;
-    font-family: 'Space Mono', monospace;
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 1px;
-  }
-
-  /* APP MOCKUP */
-  .mockup-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 80px;
-    align-items: center;
-    padding: 100px 40px;
-    max-width: 1200px;
-    margin: 0 auto;
-    z-index: 1;
-    position: relative;
-  }
-
-  .mockup-text h2 { margin-bottom: 24px; }
-  .mockup-text p {
-    color: var(--muted);
-    font-size: 15px;
-    line-height: 1.9;
-    margin-bottom: 16px;
-  }
-
-  /* Phone Mockup */
-  .phone-wrap {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .phone {
-    width: 200px;
-    height: 420px;
-    background: #1a1612;
-    border-radius: 36px;
-    border: 2px solid rgba(212,136,74,0.25);
-    padding: 16px;
-    position: relative;
-    box-shadow: 0 0 60px rgba(212,136,74,0.08), 0 40px 80px rgba(0,0,0,0.6);
-    animation: float 4s ease-in-out infinite;
-  }
-  .phone-2 {
-    margin-top: 40px;
-    animation-delay: -2s;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-
-  .phone-notch {
-    width: 60px; height: 6px;
-    background: #0e0c0a;
-    border-radius: 3px;
-    margin: 0 auto 16px;
-  }
-
-  .phone-screen {
-    height: 350px;
-    background: var(--bg);
-    border-radius: 24px;
-    padding: 16px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  /* Focus screen */
-  .focus-ring {
-    width: 100px; height: 100px;
-    border-radius: 50%;
-    border: 2px solid rgba(212,136,74,0.3);
-    margin: 20px auto 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .focus-ring::before {
-    content: '';
-    position: absolute;
-    inset: -8px;
-    border-radius: 50%;
-    border: 1px solid rgba(212,136,74,0.1);
-    animation: pulse-ring 2s ease-in-out infinite;
-  }
-  @keyframes pulse-ring {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.08); opacity: 0.5; }
-  }
-  .focus-time {
-    font-family: 'Space Mono', monospace;
-    font-size: 18px;
-    color: var(--amber);
-    text-align: center;
-  }
-  .focus-label {
-    font-size: 9px;
-    text-align: center;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 0.2em;
-    margin-top: 4px;
-  }
-  .phone-title {
-    font-size: 10px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 0.15em;
-    text-align: center;
-    margin-bottom: 12px;
-  }
-  .blocked-bar {
-    background: rgba(212,136,74,0.05);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 10px;
-    font-size: 9px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-    margin-top: 8px;
-    display: flex;
-    justify-content: space-between;
-  }
-  .blocked-bar span { color: var(--amber-dim); }
-
-  /* Summary screen */
-  .summary-item {
-    background: rgba(212,136,74,0.05);
-    border-left: 2px solid var(--amber-dim);
-    padding: 8px 10px;
-    margin-bottom: 8px;
-    font-size: 9px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-  }
-  .summary-tag {
-    font-size: 8px;
-    color: var(--amber);
-    letter-spacing: 0.1em;
-    margin-bottom: 3px;
-  }
-
-  /* FIREWALL TABLE */
-  .firewall-section {
-    padding: 80px 40px;
-    max-width: 1200px;
-    margin: 0 auto;
-    z-index: 1;
-    position: relative;
-  }
-
-  .fw-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 40px;
-    font-size: 14px;
-  }
-  .fw-table th {
-    text-align: left;
-    padding: 14px 20px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--amber);
-    border-bottom: 1px solid var(--border);
-    font-weight: 400;
-  }
-  .fw-table td {
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(212,136,74,0.06);
-    color: var(--muted);
-    line-height: 1.6;
-    vertical-align: top;
-  }
-  .fw-table tr:hover td { background: rgba(212,136,74,0.03); }
-  .fw-table td:first-child {
-    color: var(--cream);
-    font-family: 'DM Serif Display', serif;
-    font-size: 16px;
-  }
-  .badge {
-    display: inline-block;
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 1px;
-    background: rgba(212,136,74,0.1);
-    color: var(--amber);
-    border: 1px solid rgba(212,136,74,0.2);
-  }
-
-  /* PRICING */
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-top: 60px;
-  }
-  .pricing-card {
-    border: 1px solid var(--border);
-    padding: 40px;
-    background: var(--surface);
-    position: relative;
-    transition: border-color 0.3s;
-  }
-  .pricing-card.featured {
-    border-color: var(--amber-dim);
-  }
-  .pricing-card.featured::after {
-    content: 'POPULAR';
-    position: absolute;
-    top: 20px; right: 20px;
-    font-family: 'Space Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    color: var(--amber);
-    border: 1px solid var(--amber-dim);
-    padding: 3px 8px;
-  }
-  .pricing-card:hover { border-color: var(--amber-dim); }
-  .plan-name {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.3em;
-    color: var(--amber);
-    margin-bottom: 16px;
-  }
-  .plan-price {
-    font-family: 'DM Serif Display', serif;
-    font-size: 48px;
-    color: var(--cream);
-    line-height: 1;
-  }
-  .plan-price sup { font-size: 20px; vertical-align: super; color: var(--muted); }
-  .plan-price sub { font-size: 14px; color: var(--muted); font-family: 'Noto Serif TC', serif; }
-  .plan-desc {
-    font-size: 13px;
-    color: var(--muted);
-    margin: 16px 0 24px;
-    line-height: 1.7;
-  }
-  .plan-features { list-style: none; }
-  .plan-features li {
-    font-size: 13px;
-    color: var(--muted);
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(212,136,74,0.05);
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-  }
-  .plan-features li::before { content: '→'; color: var(--amber-dim); flex-shrink: 0; }
-
-  /* FOOTER */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 40px 48px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 1;
-    position: relative;
-  }
-  .footer-logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 20px;
-    color: var(--gold);
-  }
-  .footer-copy {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-
-  /* BREATH DEMO */
-  .breath-demo {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin: 60px auto;
-    max-width: 320px;
-  }
-  .breath-circle {
-    width: 120px; height: 120px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(212,136,74,0.2), rgba(212,136,74,0.02));
-    border: 1px solid rgba(212,136,74,0.3);
-    animation: breathe 4s ease-in-out infinite;
-    display: flex; align-items: center; justify-content: center;
-  }
-  @keyframes breathe {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212,136,74,0.1); }
-    50% { transform: scale(1.25); box-shadow: 0 0 40px 10px rgba(212,136,74,0.05); }
-  }
-  .breath-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.2em;
-    animation: breathe-text 4s ease-in-out infinite;
-  }
-  @keyframes breathe-text {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
-
-  /* KEYBOARD SHORTCUT */
-  kbd {
-    background: rgba(212,136,74,0.1);
-    border: 1px solid rgba(212,136,74,0.3);
-    padding: 2px 8px;
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--amber);
-    border-radius: 2px;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--amber-dim); border-radius: 2px; }
-
-  @media (max-width: 768px) {
-    .phases { grid-template-columns: 1fr; }
-    .mockup-section { grid-template-columns: 1fr; }
-    .pricing-grid { grid-template-columns: 1fr; }
-    .phone-wrap { flex-direction: column; }
-    nav ul { display: none; }
-    .phone-2 { margin-top: 0; }
-  }
-</style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/main.js" defer></script>
 </head>
 <body>
 
-<div class="cursor" id="cursor"></div>
-<div class="cursor-ring" id="cursorRing"></div>
-
-<!-- NAV -->
-<nav>
-  <div class="logo">Zen <span>Capsule</span></div>
+<!-- 導航 -->
+<nav class="site-nav" id="siteNav" aria-label="主導航">
+  <a class="logo" href="/">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#d4884a" stroke-width="1.6" stroke-dasharray="70 12" stroke-linecap="round"/><circle cx="16" cy="16" r="4.5" fill="#d4884a" opacity="0.85"/></svg>
+    Zen <em>Capsule</em>
+  </a>
   <ul>
-    <li><a href="#how">流程</a></li>
-    <li><a href="#shield">防護</a></li>
+    <li class="nav-hide-m"><a href="#how">流程</a></li>
+    <li class="nav-hide-m"><a href="#shield">防護</a></li>
     <li><a href="#pricing">方案</a></li>
-    <li><a href="#pricing" class="nav-cta">立即體驗</a></li>
+    <li class="nav-hide-m"><a href="#faq">FAQ</a></li>
+    <li><a href="/app.html" class="nav-cta">Web 體驗</a></li>
   </ul>
 </nav>
 
+<main>
+
 <!-- HERO -->
-<div class="hero">
-  <p class="hero-tag">✦ Digital Sanctuary · 數位結界</p>
-  <h1>在雜訊中<br>找到<em>寧靜</em>核心</h1>
-  <p class="hero-sub">AI Agent 為你守門，讓「溝通」與「執行」徹底分離。你只需要專注，其他的交給 Zen Capsule。</p>
-  <p class="hero-stat">你平均每被打斷一次，需要 <strong>23分15秒</strong> 才能重新進入心流<br><small style="color:var(--muted);font-size:10px;font-family:'Space Mono',monospace;letter-spacing:0.1em;">— Sophie Leroy, 2009 · Attention Residue Research</small></p>
-  <div class="hero-btns">
-    <button class="btn-primary">下載 Chrome 擴充功能</button>
-    <button class="btn-ghost">了解更多 →</button>
-  </div>
-
-  <!-- Breath animation -->
-  <div class="breath-demo">
-    <div class="breath-circle">
-      <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--amber-dim);letter-spacing:0.1em;">FOCUS</span>
+<header class="hero">
+  <div class="hero-vertical" aria-hidden="true">數位結界．心流不滅</div>
+  <div class="hero-core">
+    <p class="hero-tag">✦ Digital Sanctuary · 數位結界</p>
+    <h1>在雜訊中<br>找到<em>寧靜</em>核心</h1>
+    <p class="hero-sub">Claude AI 為你守門，讓「溝通」與「執行」徹底分離。專注期間所有通知被靜靜收起，只有真正緊急的事，才被允許敲門。</p>
+    <p class="hero-stat">你平均每被打斷一次，需要 <strong>23 分 15 秒</strong> 才能重新進入心流<small>— Sophie Leroy, 2009 · Attention Residue Research</small></p>
+    <div class="hero-btns">
+      <a class="btn-primary" href="#pricing">Android App · 即將上架</a>
+      <a class="btn-ghost" href="/app.html">開啟 Web 體驗版 →</a>
     </div>
-    <span class="breath-label">— 吸氣．暫停．吐氣 —</span>
+    <div class="breath" aria-hidden="true">
+      <div class="breath-ring"><span>FOCUS</span></div>
+      <span class="breath-label" id="breathLabel">— 吸氣．暫停．吐氣 —</span>
+    </div>
   </div>
-</div>
+  <div class="hero-vertical" aria-hidden="true">吸氣．暫停．吐氣</div>
+</header>
 
-<div style="width:100%;background:linear-gradient(90deg,transparent,var(--border),transparent);height:1px;"></div>
+<div class="divider" aria-hidden="true"></div>
 
-<!-- HOW IT WORKS -->
+<!-- 三段式儀式 -->
 <section id="how">
-  <p class="section-label">✦ The Workflow · 三段式儀式</p>
-  <h2>從<em>啟動</em>到<em>深潛</em><br>每個細節都是設計</h2>
+  <div class="section-inner">
+    <p class="section-label reveal">✦ The Workflow · 三段式儀式</p>
+    <h2 class="section-title reveal">從<em>啟動</em>到<em>深潛</em><br>每個細節都是設計</h2>
 
-  <div class="phases">
-    <div class="phase">
-      <div class="phase-num">PHASE 01</div>
-      <h3>心理暖身</h3>
-      <div class="phase-sub">The Ritual</div>
-      <p>琥珀色溫濾鏡降低視覺刺激，低頻環境音隔絕外界。30 秒呼吸引導讓你進入準備狀態，輸入今日唯一目標。手機同步開啟禪定鎖屏。</p>
-      <div class="feature-pills">
-        <span class="pill">色溫調節</span>
-        <span class="pill">白噪音</span>
-        <span class="pill">呼吸引導</span>
-        <span class="pill">跨裝置鎖定</span>
-      </div>
+    <div class="phases">
+      <article class="phase reveal">
+        <div class="phase-ghost" aria-hidden="true">壹</div>
+        <div class="phase-num">PHASE 01</div>
+        <h3>心理暖身</h3>
+        <div class="phase-sub">The Ritual</div>
+        <p>開始前的 30 秒呼吸引導，讓心率慢下來。輸入今日唯一目標，按下開始——手機同步進入禪定狀態，儀式感是專注的開關。</p>
+        <div class="pills">
+          <span class="pill">呼吸引導</span>
+          <span class="pill">單一目標</span>
+          <span class="pill">跨裝置同步</span>
+        </div>
+      </article>
+      <article class="phase reveal reveal-d1">
+        <div class="phase-ghost" aria-hidden="true">貳</div>
+        <div class="phase-num">PHASE 02</div>
+        <h3>深潛守護</h3>
+        <div class="phase-sub">Deep Focus Shield</div>
+        <p>專注期間，App 攔下手機通知。內建關鍵字規則即時放行真急件；PRO 版由 Claude AI 三維度判斷語意，只讓真正緊急的訊息穿透結界。</p>
+        <div class="pills">
+          <span class="pill">通知攔截</span>
+          <span class="pill">AI 語意分析</span>
+          <span class="pill">緊急穿透</span>
+        </div>
+      </article>
+      <article class="phase reveal reveal-d2">
+        <div class="phase-ghost" aria-hidden="true">參</div>
+        <div class="phase-num">PHASE 03</div>
+        <h3>心智轉運站</h3>
+        <div class="phase-sub">Mental Transit</div>
+        <p>專注結束，看見今日成果：專注時長與攔截次數。被攔下的訊息整理成清單，PRO 版以 AI 批次摘要分類，十秒看完錯過的一切。</p>
+        <div class="pills">
+          <span class="pill">成果統計</span>
+          <span class="pill">訊息回顧</span>
+          <span class="pill">AI 批次摘要</span>
+        </div>
+      </article>
     </div>
-    <div class="phase">
-      <div class="phase-num">PHASE 02</div>
-      <h3>深潛守護</h3>
-      <div class="phase-sub">Deep Focus Shield</div>
-      <p>AI 隱藏所有通知紅點與浮動視窗。緊急攔截網三維度判斷真實緊急程度。按 <kbd>Alt+S</kbd> 將靈感瞬間存入保險箱，不打斷心流。</p>
-      <div class="feature-pills">
-        <span class="pill">AI 語意分析</span>
-        <span class="pill">白名單機制</span>
-        <span class="pill">靈感保險箱</span>
-        <span class="pill">隱藏紅點</span>
+  </div>
+</section>
+
+<!-- 行動端展示 -->
+<section class="mobile-section">
+  <div class="section-inner">
+    <div class="mobile-grid">
+      <div class="mobile-text">
+        <p class="section-label reveal">✦ Mobile · Android App</p>
+        <h2 class="section-title reveal">你的手機<br>也進入<em>禪定</em></h2>
+        <p class="reveal">進入專注模式後，Zen Capsule 接管通知：原始通知被靜音收起，緊急訊息即時穿透，其餘的留到休息時再看。</p>
+        <p class="reveal reveal-d1">休息時間，被攔下的訊息已經整理好——不是資訊洪流，而是一份安靜的清單。</p>
+        <div class="pills reveal reveal-d2">
+          <span class="pill">Android</span>
+          <span class="pill">Chrome 擴充功能</span>
+          <span class="pill">雲端同步</span>
+        </div>
       </div>
-    </div>
-    <div class="phase">
-      <div class="phase-num">PHASE 03</div>
-      <h3>心智轉運站</h3>
-      <div class="phase-sub">Mental Transit</div>
-      <p>顯示今日成就：專注時長、攔截次數。AI 將信件摘要為急件／待辦／純資訊。預設隱藏回覆框，防止滑入社交回應模式。</p>
-      <div class="feature-pills">
-        <span class="pill">成就解鎖</span>
-        <span class="pill">AI 摘要</span>
-        <span class="pill">純淨閱讀</span>
-        <span class="pill">防沈迷計時</span>
+
+      <div class="phones reveal reveal-d1">
+        <div class="phone" aria-hidden="true">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-title">DEEP FOCUS · 02:34:17</div>
+            <div class="focus-ring">
+              <div>
+                <div class="focus-time">02:34</div>
+                <div class="focus-unit">HOURS</div>
+              </div>
+            </div>
+            <div class="stat-bar"><span>攔截干擾</span><span class="hl">12 次</span></div>
+            <div class="stat-bar"><span>今日目標</span><span class="hl">撰寫提案</span></div>
+            <div class="phone-note">禪定鎖屏中 · 免打擾</div>
+          </div>
+        </div>
+        <div class="phone phone-2" aria-hidden="true">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-title">BREAK TIME · 訊息回顧</div>
+            <div class="summary-group-label">⚡ 緊急穿透 · 1 則</div>
+            <div class="summary-item"><span class="summary-tag">🔴 危急</span>客戶：系統掛了，急需協助！</div>
+            <div class="summary-group-label">🛡 已攔截 · 7 則</div>
+            <div class="summary-item"><span class="summary-tag">📋 重要</span>PM：設計稿 v3 已更新待確認</div>
+            <div class="summary-item"><span class="summary-tag">💬 一般</span>團隊：站立會議改到週二早上</div>
+            <div class="summary-item"><span class="summary-tag">😊 社交</span>3 則閒聊（休息後再看）</div>
+            <div class="summary-item"><span class="summary-tag">📰 資訊</span>電子報 × 2（已略過）</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- PHONE MOCKUP -->
-<div class="mockup-section">
-  <div class="mockup-text">
-    <p class="section-label">✦ Mobile · 行動端 App</p>
-    <h2>你的手機<br>也進入<em>禪定</em></h2>
-    <p>電腦進入深潛模式時，手機自動同步為禪定鎖屏。休息時才能查看 AI 整理好的訊息摘要，而非原始的資訊洪流。</p>
-    <p>動態休息計時圓環，時間到自動收回所有視窗，讓你輕鬆重新進入專注狀態。</p>
-    <div class="feature-pills" style="margin-top:24px;">
-      <span class="pill">iOS</span>
-      <span class="pill">Android</span>
-      <span class="pill">雲端同步</span>
-    </div>
-  </div>
+<!-- 緊急攔截網 -->
+<section id="shield">
+  <div class="section-inner">
+    <p class="section-label reveal">✦ Emergency Firewall · 緊急攔截網</p>
+    <h2 class="section-title reveal">不是所有「急」<br>都是真的<em>緊急</em></h2>
+    <p class="section-desc reveal">每一則通知，AI 從三個維度交叉判斷，給出 0–100 的緊急分數。超過門檻才穿透你的結界。</p>
 
-  <div class="phone-wrap">
-    <!-- Focus Mode Phone -->
-    <div class="phone">
-      <div class="phone-notch"></div>
-      <div class="phone-screen">
-        <div class="phone-title">DEEP FOCUS · 02:34:17</div>
-        <div class="focus-ring">
-          <div>
-            <div class="focus-time">02:34</div>
-            <div class="focus-label">HOURS</div>
-          </div>
-        </div>
-        <div class="blocked-bar" style="margin-top:20px;">
-          <span>攔截干擾</span>
-          <span>12 次</span>
-        </div>
-        <div class="blocked-bar">
-          <span>今日目標</span>
-          <span style="color:var(--amber);">撰寫提案</span>
-        </div>
-        <div style="text-align:center;margin-top:16px;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;">禪定鎖屏中 · 免打擾</div>
+    <div class="fw-grid">
+      <article class="fw-card reveal">
+        <div class="fw-dim">Who</div>
+        <div class="fw-dim-zh">身份</div>
+        <p>訊息來源是否在你的白名單內——主管、關鍵客戶、家人，重要的人權重自動提升。</p>
+        <div class="fw-example">範例：<q>老闆、緊急聯絡人</q><br><span class="badge">權重提升</span></div>
+      </article>
+      <article class="fw-card reveal reveal-d1">
+        <div class="fw-dim">What</div>
+        <div class="fw-dim-zh">語意</div>
+        <p>AI 辨識內容的真實緊急程度：「系統掛了」與「在嗎？」之間，差的是一整個語意宇宙。</p>
+        <div class="fw-example">範例：<q>系統掛了幫我看一下！</q><br><span class="badge">緊急穿透</span></div>
+      </article>
+      <article class="fw-card reveal reveal-d2">
+        <div class="fw-dim">Freq</div>
+        <div class="fw-dim-zh">頻次</div>
+        <p>偵測異常連環傳訊——同一個人短時間內連續多則訊息，往往代表真的有事。</p>
+        <div class="fw-example">範例：<q>奪命連環 call</q><br><span class="badge">穿透提醒</span></div>
+      </article>
+    </div>
+    <p class="fw-note reveal">免費版內建關鍵字規則即時判斷；PRO 版由 Claude AI 做完整語意分析。</p>
+  </div>
+</section>
+
+<!-- 方案 -->
+<section id="pricing">
+  <div class="section-inner">
+    <p class="section-label reveal">✦ Pricing · 訂閱方案</p>
+    <h2 class="section-title reveal">選擇你的<em>結界等級</em></h2>
+
+    <div class="pricing-grid">
+      <article class="plan reveal">
+        <div class="plan-name">FREE · 免費版</div>
+        <div class="plan-price"><sup>$</sup>0<sub> /永久免費</sub></div>
+        <p class="plan-desc">完整的專注儀式與通知攔截。內建關鍵字規則在你的裝置上即時判斷急件，不需付費。</p>
+        <ul>
+          <li>無限次專注場次與呼吸引導</li>
+          <li>通知攔截與訊息回顧清單</li>
+          <li>裝置端關鍵字緊急判斷</li>
+          <li>專注統計與每日成果</li>
+          <li class="dim">Claude AI 語意分析（PRO）</li>
+          <li class="dim">AI 批次訊息摘要（PRO）</li>
+        </ul>
+        <a class="btn-ghost btn-block" href="/app.html">免費開始</a>
+      </article>
+
+      <article class="plan plan-featured reveal reveal-d1">
+        <div class="plan-flag">RECOMMENDED · 推薦</div>
+        <div class="plan-name">PRO · 專業版</div>
+        <div class="plan-price"><sup>US$</sup>4.99<sub> /月</sub></div>
+        <p class="plan-desc">由 Claude AI 接手守門：理解語意、判斷輕重，攔下的訊息還能整理成摘要。</p>
+        <ul>
+          <li>免費版全部功能</li>
+          <li>Claude AI 語意緊急分析（每日 500 次）</li>
+          <li>AI 批次訊息摘要（每日 20 次）</li>
+          <li>Who / What / Freq 三維度穿透判定</li>
+          <li>跨裝置同步</li>
+          <li>優先支援</li>
+        </ul>
+        <a class="btn-primary btn-block" href="#faq">於 App 內訂閱</a>
+        <p class="plan-fine">透過 Google Play 應用程式內購買訂閱，可隨時取消。</p>
+      </article>
+    </div>
+
+    <div class="stats-row reveal">
+      <div class="stat-cell">
+        <div class="stat-num">23<em>分</em></div>
+        <div class="stat-name">每次打斷的恢復成本</div>
+        <div class="stat-src">Leroy, 2009</div>
       </div>
-    </div>
-
-    <!-- Summary Phone -->
-    <div class="phone phone-2">
-      <div class="phone-notch"></div>
-      <div class="phone-screen">
-        <div class="phone-title">BREAK TIME · 休息 5min</div>
-        <div style="margin-top:12px;">
-          <div style="font-size:9px;font-family:'Space Mono',monospace;color:var(--amber);letter-spacing:0.15em;margin-bottom:8px;">📧 GMAIL · 3 封新信</div>
-          <div class="summary-item">
-            <div class="summary-tag">🔴 急件</div>
-            <div>客戶詢問週五交付進度</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-tag">📋 待辦</div>
-            <div>PM 分享設計稿待確認</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-tag">📰 純資訊</div>
-            <div>電子報 × 2（已略過）</div>
-          </div>
-          <div style="font-size:9px;font-family:'Space Mono',monospace;color:var(--amber);letter-spacing:0.15em;margin:12px 0 8px;">💬 MESSENGER · 5 則</div>
-          <div class="summary-item">
-            <div class="summary-tag">💼 公事</div>
-            <div>團隊站立會議確認</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-tag">😊 社交</div>
-            <div>3 則閒聊（休息後再看）</div>
-          </div>
-        </div>
+      <div class="stat-cell">
+        <div class="stat-num">0<em>則</em></div>
+        <div class="stat-name">專注期間漏接的真急件</div>
+        <div class="stat-src">AI Emergency Firewall</div>
       </div>
-    </div>
-  </div>
-</div>
-
-<div style="width:100%;background:linear-gradient(90deg,transparent,var(--border),transparent);height:1px;max-width:1200px;margin:0 auto;"></div>
-
-<!-- FIREWALL TABLE -->
-<div class="firewall-section" id="shield">
-  <p class="section-label">✦ Emergency Firewall · 緊急攔截網</p>
-  <h2>不是所有「急」<br>都是真的<em>緊急</em></h2>
-
-  <table class="fw-table">
-    <thead>
-      <tr>
-        <th>判斷維度</th>
-        <th>邏輯說明</th>
-        <th>範例</th>
-        <th>處理</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>身份 (Who)</td>
-        <td>訊息來源是否在白名單內，如主管、關鍵客戶、家人。</td>
-        <td>老闆、緊急聯絡人</td>
-        <td><span class="badge">權重提升</span></td>
-      </tr>
-      <tr>
-        <td>語意 (What)</td>
-        <td>AI 辨識情緒標記詞：「掛了」「火燒屁股」「立刻」「緊急」等。</td>
-        <td>「系統掛了幫我看一下！」</td>
-        <td><span class="badge">權重提升</span></td>
-      </tr>
-      <tr>
-        <td>頻次 (Freq)</td>
-        <td>偵測異常連環傳訊，如 5 分鐘內同一人傳超過 6 則。</td>
-        <td>奪命連環 call</td>
-        <td><span class="badge" style="background:rgba(212,136,74,0.25);">穿透提醒</span></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- PRICING -->
-<section id="pricing" style="padding-top:60px;">
-  <p class="section-label">✦ Pricing · 訂閱方案</p>
-  <h2>選擇你的<em>結界等級</em></h2>
-
-  <div class="pricing-grid">
-    <div class="pricing-card">
-      <div class="plan-name">PERSONAL · 個人版</div>
-      <div class="plan-price"><sup>$</sup>9.9<sub>/月</sub></div>
-      <p class="plan-desc">自由工作者、知識工作者首選。Chrome 擴充 + 行動 App，完整心流保護。</p>
-      <ul class="plan-features">
-        <li>Chrome/Edge 擴充功能完整版</li>
-        <li>iOS & Android App</li>
-        <li>AI 緊急訊息攔截（無限次）</li>
-        <li>Gmail & Messenger 智慧摘要</li>
-        <li>靈感保險箱 <kbd>Alt+S</kbd></li>
-        <li>跨裝置同步</li>
-      </ul>
-      <br>
-      <button class="btn-ghost" style="width:100%;text-align:center;">開始免費試用 14 天</button>
-    </div>
-
-    <div class="pricing-card featured">
-      <div class="plan-name">TEAM · 團隊版</div>
-      <div class="plan-price"><sup>$</sup>14.9<sub>/人/月</sub></div>
-      <p class="plan-desc">遠端協作團隊、軟體開發團隊。含去識別化的團隊專注力數據看板。</p>
-      <ul class="plan-features">
-        <li>個人版全部功能</li>
-        <li>團隊專注力數據看板</li>
-        <li>去識別化統計報告</li>
-        <li>管理者設定白名單池</li>
-        <li>Slack / Teams 整合（即將推出）</li>
-        <li>優先客服支援</li>
-      </ul>
-      <br>
-      <button class="btn-primary" style="width:100%;text-align:center;">聯繫企業銷售</button>
-    </div>
-  </div>
-
-  <!-- Stats row -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:60px;">
-    <div style="background:var(--surface);padding:32px;text-align:center;">
-      <div style="font-family:'DM Serif Display',serif;font-size:42px;color:var(--amber);">23<em style="font-size:24px;">分</em></div>
-      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.2em;margin-top:8px;">每次打斷的恢復成本</div>
-    </div>
-    <div style="background:var(--surface);padding:32px;text-align:center;">
-      <div style="font-family:'DM Serif Display',serif;font-size:42px;color:var(--amber);">4<em style="font-size:24px;">倍</em></div>
-      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.2em;margin-top:8px;">深度工作的產出效率提升</div>
-    </div>
-    <div style="background:var(--surface);padding:32px;text-align:center;">
-      <div style="font-family:'DM Serif Display',serif;font-size:42px;color:var(--amber);">∞</div>
-      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.2em;margin-top:8px;">你的心流時光</div>
+      <div class="stat-cell">
+        <div class="stat-num">∞</div>
+        <div class="stat-name">你的心流時光</div>
+        <div class="stat-src">Your Flow State</div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- CTA BANNER -->
-<div style="background:linear-gradient(135deg,#1a1208,#0e0c0a);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:80px 40px;text-align:center;position:relative;z-index:1;overflow:hidden;">
-  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(212,136,74,0.06),transparent 70%);pointer-events:none;"></div>
-  <p style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.3em;color:var(--amber);margin-bottom:20px;">✦ START YOUR RITUAL</p>
-  <h2 style="font-family:'DM Serif Display',serif;font-size:clamp(28px,4vw,52px);color:var(--cream);margin-bottom:16px;font-weight:400;">準備好進入<em style="color:var(--amber);">深潛</em>了嗎？</h2>
-  <p style="color:var(--muted);font-size:15px;margin-bottom:40px;line-height:1.8;">14 天免費試用 · 無需信用卡 · 隨時取消</p>
-  <button class="btn-primary" style="font-size:14px;padding:16px 48px;" onclick="openModal('login')">立即開始 · 免費試用</button>
-</div>
-<!-- AUTH MODAL -->
-<div id="authModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(10px);">
-  <div style="background:#161310;border:1px solid rgba(212,136,74,0.2);padding:48px;width:100%;max-width:420px;position:relative;">
-    <button onclick="closeModal()" style="position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-inner">
+    <p class="section-label reveal">✦ FAQ · 常見問題</p>
+    <h2 class="section-title reveal">你可能想<em>知道</em></h2>
 
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--gold);">Zen <em style="color:var(--amber);">Capsule</em></div>
-      <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.15em;margin-top:6px;">數位結界 · 深度專注</div>
+    <div class="faq-list reveal">
+      <details class="faq-item">
+        <summary>我的通知內容會被怎麼處理？</summary>
+        <div class="faq-body">專注期間被攔截的通知（標題與內容摘要）會以加密連線傳送到我們的伺服器進行緊急程度分析；PRO 版會再交由 Anthropic 的 Claude API 做語意判斷。Anthropic 不會使用你的資料訓練模型。分析紀錄保存在你的帳號下供回顧，你可以隨時在 App 內刪除帳號，所有資料將立即永久刪除。詳見<a href="/privacy.html">隱私權政策</a>。</div>
+      </details>
+      <details class="faq-item">
+        <summary>免費版和 PRO 版差在哪？</summary>
+        <div class="faq-body">免費版的緊急判斷使用裝置端關鍵字規則（例如「緊急」「火災」「快回我」等詞彙觸發穿透），已能應付多數情境。PRO 版（US$4.99/月）改由 Claude AI 理解完整語意——分辨「系統掛了」和「在嗎」的差別——每日 500 次 AI 分析與 20 次批次摘要。</div>
+      </details>
+      <details class="faq-item">
+        <summary>如何訂閱或取消 PRO？</summary>
+        <div class="faq-body">PRO 訂閱透過 Android App 內的 Google Play 應用程式內購買完成，由 Google Play 管理帳務。你可以隨時在 Google Play「訂閱」頁面取消，取消後 PRO 功能會持續到當期結束，不另收費。</div>
+      </details>
+      <details class="faq-item">
+        <summary>支援哪些平台？</summary>
+        <div class="faq-body">目前支援 Android（Google Play 即將上架）與 Chrome 桌面擴充功能，並提供 Web 體驗版讓你先試用核心功能。其他平台在規劃中。</div>
+      </details>
+      <details class="faq-item">
+        <summary>為什麼 App 需要「通知存取」權限？</summary>
+        <div class="faq-body">通知攔截是 Zen Capsule 的核心功能：沒有通知存取權限，App 就無法在你專注時收起干擾、也無法判斷哪些訊息該穿透。權限只在專注場次進行中使用，你可以隨時在系統設定中撤銷。</div>
+      </details>
     </div>
+  </div>
+</section>
 
-    <!-- Google Login Button (Primary) -->
-    <button onclick="googleLogin()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;border:none;padding:14px 20px;cursor:pointer;border-radius:2px;margin-bottom:16px;font-size:14px;font-weight:500;color:#3c4043;font-family:'Space Mono',monospace;">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
-      使用 Google 帳號登入（授權讀取 Gmail）
-    </button>
-
-    <!-- Divider -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;">或用 email</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>
-
-    <!-- Email tabs -->
-    <div style="display:flex;margin-bottom:20px;border-bottom:1px solid var(--border);">
-      <button id="tabLogin" onclick="switchTab('login')" style="flex:1;padding:10px;background:none;border:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--amber);border-bottom:2px solid var(--amber);cursor:pointer;">登入</button>
-      <button id="tabRegister" onclick="switchTab('register')" style="flex:1;padding:10px;background:none;border:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;">註冊</button>
-    </div>
-
-    <div id="authMsg" style="display:none;padding:10px 14px;border-radius:2px;font-size:12px;font-family:'Space Mono',monospace;margin-bottom:14px;"></div>
-
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <input id="authEmail" type="email" placeholder="email@example.com" style="background:#0e0c0a;border:1px solid var(--border);padding:12px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;border-radius:2px;" onfocus="this.style.borderColor='var(--amber-dim)'" onblur="this.style.borderColor='var(--border)'">
-      <input id="authPassword" type="password" placeholder="密碼（最少 8 字元）" style="background:#0e0c0a;border:1px solid var(--border);padding:12px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;border-radius:2px;" onfocus="this.style.borderColor='var(--amber-dim)'" onblur="this.style.borderColor='var(--border)'">
-      <button id="authSubmit" onclick="submitAuth()" style="width:100%;padding:12px;background:var(--amber-dim);border:none;color:var(--cream);font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.1em;cursor:pointer;border-radius:2px;margin-top:2px;">登入</button>
-    </div>
-
-    <!-- Google note -->
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;text-align:center;">
-      使用 Google 登入可啟用 Gmail 封鎖功能<br>Email 登入僅能使用 AI 緊急判斷功能
-    </div>
+<!-- CTA -->
+<div class="cta-banner">
+  <p class="section-label">✦ Start Your Ritual</p>
+  <h2>準備好進入<em>深潛</em>了嗎？</h2>
+  <p>免費版永久免費 · PRO 隨時可取消 · 資料隨時可刪除</p>
+  <div class="cta-btns">
+    <a class="btn-primary" href="/app.html">開啟 Web 體驗版</a>
+    <a class="btn-ghost" href="#pricing">查看方案</a>
   </div>
 </div>
 
-<!-- APP DASHBOARD -->
-<div id="appDashboard" style="display:none;position:fixed;inset:0;background:#0e0c0a;z-index:999;overflow-y:auto;">
-  <div style="max-width:900px;margin:0 auto;padding:40px 32px;">
+</main>
 
-    <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;padding-bottom:20px;border-bottom:1px solid var(--border);">
-      <div>
-        <div style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--gold);">Zen <em style="color:var(--amber);">Capsule</em></div>
-        <div id="userEmail" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.1em;margin-top:4px;"></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <!-- Gmail status badge -->
-        <div id="gmailBadge" style="display:none;font-family:'Space Mono',monospace;font-size:10px;padding:6px 12px;border-radius:2px;letter-spacing:0.1em;"></div>
-        <button onclick="logout()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:8px 18px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;border-radius:2px;">登出</button>
-      </div>
-    </div>
-
-    <!-- Gmail connect prompt (email login users only) -->
-    <div id="gmailPrompt" style="display:none;background:rgba(212,136,74,0.05);border:1px solid rgba(212,136,74,0.2);padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);letter-spacing:0.15em;margin-bottom:4px;">📧 連結 Gmail 以啟用完整功能</div>
-        <div style="font-size:13px;color:var(--muted);">授權後可封鎖通知 · 專注結束自動摘要信件</div>
-      </div>
-      <button onclick="googleLogin()" style="background:var(--amber);border:none;color:#0e0c0a;padding:10px 20px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;border-radius:2px;white-space:nowrap;margin-left:16px;">連結 Google</button>
-    </div>
-
-    <!-- Focus Panel -->
-    <div style="background:#161310;border:1px solid var(--border);padding:32px;margin-bottom:24px;" id="focusPanel">
-      <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.3em;color:var(--amber);margin-bottom:20px;">✦ FOCUS SESSION</div>
-
-      <!-- Setup -->
-      <div id="focusSetup">
-        <input id="focusGoal" type="text" placeholder="今天的唯一目標是什麼？" style="width:100%;background:#0e0c0a;border:1px solid var(--border);padding:14px 16px;color:var(--text);font-family:'Noto Serif TC',serif;font-size:15px;outline:none;border-radius:2px;margin-bottom:16px;" onfocus="this.style.borderColor='var(--amber-dim)'" onblur="this.style.borderColor='var(--border)'">
-        <div style="margin-bottom:16px;">
-          <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.15em;margin-bottom:10px;">專注時長</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button onclick="setDuration(25)" id="dur25" class="dur-btn" style="padding:8px 16px;background:rgba(212,136,74,0.15);border:1px solid var(--amber-dim);color:var(--amber);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;border-radius:2px;">25 分</button>
-            <button onclick="setDuration(45)" id="dur45" class="dur-btn" style="padding:8px 16px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;border-radius:2px;">45 分</button>
-            <button onclick="setDuration(90)" id="dur90" class="dur-btn" style="padding:8px 16px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;border-radius:2px;">90 分</button>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input id="durCustom" type="number" min="1" max="300" placeholder="自訂" style="width:70px;background:#0e0c0a;border:1px solid var(--border);padding:8px 10px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;border-radius:2px;" oninput="setDuration(parseInt(this.value)||0,'custom')">
-              <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">分鐘</span>
-            </div>
-          </div>
-        </div>
-        <button onclick="startFocus()" class="btn-primary" style="width:100%;padding:14px;">🧘 開始深潛</button>
-        <div id="focusSetupMsg" style="margin-top:10px;font-family:'Space Mono',monospace;font-size:11px;color:#e07070;text-align:center;display:none;"></div>
-      </div>
-
-      <!-- Active -->
-      <div id="focusActive" style="display:none;">
-        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:24px;">
-          <div style="position:relative;width:160px;height:160px;margin-bottom:16px;">
-            <svg width="160" height="160" style="transform:rotate(-90deg);">
-              <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(212,136,74,0.08)" stroke-width="6"/>
-              <circle id="timerRing" cx="80" cy="80" r="70" fill="none" stroke="var(--amber)" stroke-width="6" stroke-dasharray="439.8" stroke-dashoffset="0" stroke-linecap="round" style="transition:stroke-dashoffset 1s linear;"/>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <div id="timerDisplay" style="font-family:'Space Mono',monospace;font-size:28px;color:var(--amber);">--:--</div>
-              <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.2em;margin-top:4px;">剩餘時間</div>
-            </div>
-          </div>
-          <div id="activeGoal" style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--cream);text-align:center;margin-bottom:4px;"></div>
-          <div id="activeInterceptions" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);"></div>
-        </div>
-
-        <!-- Shield -->
-        <div id="shieldBlock" style="background:rgba(107,94,80,0.08);border:1px solid rgba(107,94,80,0.2);padding:16px 20px;border-radius:2px;margin-bottom:16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--muted);margin-bottom:4px;">🛡 FOCUS SHIELD</div>
-              <div id="shieldStatus" style="font-size:13px;color:var(--muted);">Gmail · Messenger 通知已封鎖</div>
-            </div>
-            <div id="shieldInterceptCount" style="font-family:'DM Serif Display',serif;font-size:32px;color:var(--amber-dim);">0</div>
-          </div>
-        </div>
-
-        <button onclick="endFocus()" class="btn-ghost" style="width:100%;padding:12px;font-size:13px;">結束專注</button>
-      </div>
-
-      <!-- Break -->
-      <div id="focusBreak" style="display:none;">
-        <div style="text-align:center;margin-bottom:24px;">
-          <div style="font-family:'DM Serif Display',serif;font-size:32px;color:var(--amber);margin-bottom:4px;">休息時間 🍵</div>
-          <div id="breakCountdown" style="font-family:'Space Mono',monospace;font-size:13px;color:var(--muted);"></div>
-        </div>
-        <div style="background:#0e0c0a;border:1px solid var(--border);padding:20px;margin-bottom:16px;">
-          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--amber);margin-bottom:12px;">📧 GMAIL 摘要（專注期間）</div>
-          <div id="gmailSummary"><div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">AI 分析中...</div></div>
-        </div>
-        <button onclick="restartFocus()" class="btn-primary" style="width:100%;padding:14px;">🧘 重新開始深潛</button>
-      </div>
-    </div>
-
-    <!-- AI Urgency Tester -->
-    <div style="background:#161310;border:1px solid rgba(212,136,74,0.3);padding:32px;margin-bottom:24px;">
-      <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.3em;color:var(--amber);margin-bottom:8px;">✦ AI 緊急判斷測試</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">輸入一則訊息，讓 Claude Sonnet 判斷要不要打斷你的專注</div>
-      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
-        <input id="testMessage" type="text" placeholder="訊息內容，例如：系統整個掛了幫我看一下！！" style="background:#0e0c0a;border:1px solid var(--border);padding:12px 16px;color:var(--text);font-family:'Noto Serif TC',serif;font-size:14px;outline:none;border-radius:2px;" onfocus="this.style.borderColor='var(--amber-dim)'" onblur="this.style.borderColor='var(--border)'">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <input id="testSender" type="text" placeholder="發送者名稱（選填）" style="background:#0e0c0a;border:1px solid var(--border);padding:12px 16px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;border-radius:2px;" onfocus="this.style.borderColor='var(--amber-dim)'" onblur="this.style.borderColor='var(--border)'">
-          <input id="testContact" type="text" placeholder="email / 電話（選填）" style="background:#0e0c0a;border:1px solid var(--border);padding:12px 16px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;border-radius:2px;" onfocus="this.style.borderColor='var(--amber-dim)'" onblur="this.style.borderColor='var(--border)'">
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <label style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">連環傳訊次數：</label>
-          <input id="testRepeat" type="number" value="1" min="1" max="20" style="width:80px;background:#0e0c0a;border:1px solid var(--border);padding:8px 12px;color:var(--text);font-family:'Space Mono',monospace;font-size:13px;outline:none;border-radius:2px;">
-        </div>
-      </div>
-      <button onclick="testUrgency()" class="btn-primary" style="width:100%;padding:14px;" id="testBtn">🤖 讓 AI 判斷</button>
-      <div id="urgencyResult" style="display:none;margin-top:24px;">
-        <div style="border:1px solid var(--border);padding:24px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-            <div style="flex:1;">
-              <div id="resultCategory" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;margin-bottom:8px;"></div>
-              <div id="resultReason" style="font-size:14px;color:var(--text);line-height:1.7;"></div>
-            </div>
-            <div id="resultScore" style="font-family:'DM Serif Display',serif;font-size:56px;line-height:1;min-width:80px;text-align:right;"></div>
-          </div>
-          <div style="background:#0e0c0a;height:4px;border-radius:2px;margin-bottom:16px;overflow:hidden;">
-            <div id="scoreBar" style="height:100%;border-radius:2px;transition:width 0.8s ease;"></div>
-          </div>
-          <div id="breakthroughBadge" style="display:none;background:rgba(212,136,74,0.1);border:1px solid var(--amber-dim);padding:10px 16px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.15em;color:var(--amber);text-align:center;">⚡ 穿透專注盾 — 此訊息會立即通知你</div>
-          <div id="blockBadge" style="display:none;background:rgba(107,94,80,0.1);border:1px solid rgba(107,94,80,0.3);padding:10px 16px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.15em;color:var(--muted);text-align:center;">🛡 攔截成功 — 休息時再查看</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div style="background:#161310;border:1px solid var(--border);padding:32px;">
-      <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.3em;color:var(--amber);margin-bottom:20px;">✦ TODAY'S STATS</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);">
-        <div style="background:#0e0c0a;padding:24px;text-align:center;"><div id="statMinutes" style="font-family:'DM Serif Display',serif;font-size:36px;color:var(--amber);">—</div><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.15em;margin-top:8px;">專注分鐘</div></div>
-        <div style="background:#0e0c0a;padding:24px;text-align:center;"><div id="statSessions" style="font-family:'DM Serif Display',serif;font-size:36px;color:var(--amber);">—</div><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.15em;margin-top:8px;">專注次數</div></div>
-        <div style="background:#0e0c0a;padding:24px;text-align:center;"><div id="statInterceptions" style="font-family:'DM Serif Display',serif;font-size:36px;color:var(--amber);">—</div><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.15em;margin-top:8px;">攔截次數</div></div>
-      </div>
-      <button onclick="loadStats()" style="width:100%;margin-top:16px;background:none;border:1px solid var(--border);color:var(--muted);padding:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;cursor:pointer;">重新整理統計</button>
-    </div>
-
+<!-- 頁尾 -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <svg class="footer-enso" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#8a5030" stroke-width="1.4" stroke-dasharray="70 12" stroke-linecap="round"/></svg>
+    <div class="footer-logo">Zen Capsule</div>
+    <nav class="footer-links" aria-label="頁尾連結">
+      <a href="/privacy.html">隱私權政策</a>
+      <a href="/terms.html">服務條款</a>
+      <a href="/app.html">Web 體驗版</a>
+      <a href="mailto:zencapsule.app@gmail.com">聯絡我們</a>
+    </nav>
+    <div class="footer-copy">© 2026 Zen Capsule · 數位結界<br>Urgency analysis powered by Claude (Anthropic)</div>
   </div>
-</div>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-logo">Zen Capsule</div>
-  <div class="footer-copy">© 2025 Zen Capsule · 數位結界 · MVP v0.1</div>
 </footer>
 
-<script>
-  const API = 'http://localhost:3000/api/v1'
-  let token = localStorage.getItem('zc_token') || null
-  let googleConnected = localStorage.getItem('zc_google') === 'true'
-  let currentSessionId = null
-  let focusDuration = 25
-  let timerInterval = null
-  let timerSecondsLeft = 0
-  let timerTotal = 0
-  let interceptCount = 0
-  let breakInterval = null
-
-  // ── Cursor ─────────────────────────────────────────
-  const cursor = document.getElementById('cursor')
-  const ring = document.getElementById('cursorRing')
-  let mx=0,my=0,rx=0,ry=0
-  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.left=mx-4+'px';cursor.style.top=my-4+'px';})
-  function animRing(){rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;ring.style.left=rx-16+'px';ring.style.top=ry-16+'px';requestAnimationFrame(animRing);}
-  animRing()
-  document.querySelectorAll('button,a,.phase,.pricing-card').forEach(el=>{
-    el.addEventListener('mouseenter',()=>{cursor.style.transform='scale(2.5)';ring.style.transform='scale(1.5)';})
-    el.addEventListener('mouseleave',()=>{cursor.style.transform='scale(1)';ring.style.transform='scale(1)';})
-  })
-  const breathLabel=document.querySelector('.breath-label')
-  if(breathLabel){const L=['— 吸氣 —','— 暫停 —','— 吐氣 —','— 暫停 —'];let li=0;setInterval(()=>{li=(li+1)%L.length;breathLabel.textContent=L[li];},1000);}
-
-  // Auto-restore session
-  if(token) showDashboard(localStorage.getItem('zc_email')||'')
-
-  // ── Modal ──────────────────────────────────────────
-  function openModal(){document.getElementById('authModal').style.display='flex';switchTab('login');}
-  function closeModal(){document.getElementById('authModal').style.display='none';}
-  function switchTab(tab){
-    const L=tab==='login'
-    document.getElementById('tabLogin').style.color=L?'var(--amber)':'var(--muted)'
-    document.getElementById('tabLogin').style.borderBottomColor=L?'var(--amber)':'transparent'
-    document.getElementById('tabRegister').style.color=!L?'var(--amber)':'var(--muted)'
-    document.getElementById('tabRegister').style.borderBottomColor=!L?'var(--amber)':'transparent'
-    document.getElementById('authSubmit').textContent=L?'登入':'建立帳號'
-    document.getElementById('authSubmit').dataset.mode=tab
-    document.getElementById('authMsg').style.display='none'
-  }
-  function showMsg(msg,isError=false){
-    const el=document.getElementById('authMsg')
-    el.style.display='block'
-    el.style.background=isError?'rgba(180,60,60,0.15)':'rgba(212,136,74,0.1)'
-    el.style.border=isError?'1px solid rgba(180,60,60,0.3)':'1px solid rgba(212,136,74,0.2)'
-    el.style.color=isError?'#e07070':'var(--amber)'
-    el.textContent=msg
-  }
-
-  // ── Google Login (UI mock — backend OAuth pending) ─
-  function googleLogin(){
-    // TODO: redirect to /api/v1/auth/google when backend OAuth is ready
-    // For now: simulate Google login with a mock token
-    showMsg('⚠ Google OAuth 後端尚未串接，請先用 email 登入')
-
-    // When OAuth is ready, replace with:
-    // window.location.href = API + '/auth/google'
-  }
-
-  // ── Email Auth ─────────────────────────────────────
-  async function submitAuth(){
-    const mode=document.getElementById('authSubmit').dataset.mode||'login'
-    const email=document.getElementById('authEmail').value.trim()
-    const password=document.getElementById('authPassword').value
-    if(!email||!password)return showMsg('請填入 email 和密碼',true)
-    const btn=document.getElementById('authSubmit')
-    btn.textContent='處理中...';btn.disabled=true
-    try{
-      const res=await fetch(`${API}/auth/${mode==='login'?'login':'register'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})})
-      const data=await res.json()
-      if(!res.ok)throw new Error(data.error?.fieldErrors?Object.values(data.error.fieldErrors).flat().join(', '):JSON.stringify(data.error))
-      token=data.accessToken
-      localStorage.setItem('zc_token',token)
-      localStorage.setItem('zc_email',email)
-      closeModal()
-      showDashboard(email)
-    }catch(e){showMsg(e.message,true)}
-    finally{btn.textContent=mode==='login'?'登入':'建立帳號';btn.disabled=false}
-  }
-
-  function showDashboard(email){
-    document.getElementById('appDashboard').style.display='block'
-    document.getElementById('userEmail').textContent=email
-
-    // Gmail status
-    const badge=document.getElementById('gmailBadge')
-    const prompt=document.getElementById('gmailPrompt')
-    if(googleConnected){
-      badge.style.display='block'
-      badge.style.background='rgba(52,168,83,0.1)'
-      badge.style.border='1px solid rgba(52,168,83,0.3)'
-      badge.style.color='#52a855'
-      badge.textContent='✓ Gmail 已連結'
-      if(prompt) prompt.style.display='none'
-    } else {
-      badge.style.display='none'
-      if(prompt) prompt.style.display='flex'
-    }
-    loadStats()
-  }
-
-  function logout(){
-    localStorage.removeItem('zc_token');localStorage.removeItem('zc_email')
-    token=null;googleConnected=false
-    clearInterval(timerInterval);clearInterval(breakInterval)
-    document.getElementById('appDashboard').style.display='none'
-  }
-
-  // ── Duration ───────────────────────────────────────
-  function setDuration(mins,source){
-    if(!mins||mins<1)return
-    focusDuration=mins
-    document.querySelectorAll('.dur-btn').forEach(b=>{b.style.background='none';b.style.borderColor='var(--border)';b.style.color='var(--muted)';})
-    if(source!=='custom'){
-      const btn=document.getElementById('dur'+mins)
-      if(btn){btn.style.background='rgba(212,136,74,0.15)';btn.style.borderColor='var(--amber-dim)';btn.style.color='var(--amber)';}
-      document.getElementById('durCustom').value=''
-    }
-  }
-  setDuration(25)
-
-  // ── Timer ──────────────────────────────────────────
-  function updateTimerDisplay(left,total){
-    const m=Math.floor(left/60),s=left%60
-    document.getElementById('timerDisplay').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
-    document.getElementById('timerRing').style.strokeDashoffset=439.8*(1-(total-left)/total)
-  }
-
-  // ── Focus ──────────────────────────────────────────
-  async function startFocus(){
-    const goal=document.getElementById('focusGoal').value.trim()
-    if(!goal){const m=document.getElementById('focusSetupMsg');m.textContent='請輸入今天的目標';m.style.display='block';return}
-    try{
-      const res=await fetch(`${API}/focus/start`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({goal})})
-      const data=await res.json()
-      if(!res.ok)throw new Error(JSON.stringify(data))
-      currentSessionId=data.session.id;interceptCount=0
-      document.getElementById('focusSetup').style.display='none'
-      document.getElementById('focusBreak').style.display='none'
-      document.getElementById('focusActive').style.display='block'
-      document.getElementById('activeGoal').textContent=`目標：${goal}`
-      document.getElementById('activeInterceptions').textContent='已攔截 0 次干擾'
-      document.getElementById('shieldInterceptCount').textContent='0'
-
-      // Gmail shield status
-      document.getElementById('shieldStatus').textContent=googleConnected
-        ?'Gmail · Messenger 通知已封鎖（真實）'
-        :'Gmail · Messenger 通知已封鎖（模擬）'
-
-      timerTotal=focusDuration*60;timerSecondsLeft=timerTotal
-      updateTimerDisplay(timerSecondsLeft,timerTotal)
-      clearInterval(timerInterval)
-      timerInterval=setInterval(()=>{
-        timerSecondsLeft--
-        updateTimerDisplay(timerSecondsLeft,timerTotal)
-        if(timerSecondsLeft<=0){clearInterval(timerInterval);autoEndFocus();}
-      },1000)
-    }catch(e){const m=document.getElementById('focusSetupMsg');m.textContent='⚠ '+e.message;m.style.display='block';}
-  }
-
-  async function autoEndFocus(){
-    document.getElementById('timerDisplay').textContent='完成！'
-    await endFocus(true)
-  }
-
-  async function endFocus(){
-    clearInterval(timerInterval)
-    if(!currentSessionId)return
-    try{
-      const res=await fetch(`${API}/focus/end`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({sessionId:currentSessionId})})
-      const data=await res.json()
-      const mins=Math.floor((data.session.durationSeconds||0)/60)
-      interceptCount=data.session.interceptCount
-      document.getElementById('focusActive').style.display='none'
-      document.getElementById('focusBreak').style.display='block'
-      showGmailSummary(mins,interceptCount)
-      let breakSecs=5*60
-      clearInterval(breakInterval)
-      breakInterval=setInterval(()=>{
-        breakSecs--
-        const bm=Math.floor(breakSecs/60),bs=breakSecs%60
-        document.getElementById('breakCountdown').textContent=`休息還剩 ${String(bm).padStart(2,'0')}:${String(bs).padStart(2,'0')}`
-        if(breakSecs<=0){clearInterval(breakInterval);document.getElementById('breakCountdown').textContent='休息時間結束，準備好了嗎？';}
-      },1000)
-      currentSessionId=null;loadStats()
-    }catch(e){console.error(e)}
-  }
-
-  function restartFocus(){
-    clearInterval(breakInterval)
-    document.getElementById('focusBreak').style.display='none'
-    document.getElementById('focusSetup').style.display='block'
-    document.getElementById('focusGoal').value=''
-    document.getElementById('focusPanel').style.borderColor='var(--border)'
-  }
-
-  // ── Gmail Summary ──────────────────────────────────
-  async function showGmailSummary(focusMins,intercepts){
-    const el=document.getElementById('gmailSummary')
-    el.innerHTML='<div style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--muted);">AI 分析中...</div>'
-    const mockEmails=[
-      {from:'boss@company.com',subject:'週五 Demo 準備確認',preview:'請確認週五下午兩點的 Demo 準備狀況，客戶很期待。'},
-      {from:'pm@company.com',subject:'設計稿 v3 已更新',preview:'已上傳最新版設計稿到 Figma，請確認後回覆。'},
-      {from:'newsletter@medium.com',subject:'Top 10 AI Tools This Week',preview:'Discover the most popular AI tools...'},
-      {from:'alex@team.com',subject:'下週站立會議時間調整',preview:'因週一有活動，站立會議改到週二早上 10 點。'},
-    ]
-    try{
-      const response=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-haiku-4-5-20251001',
-          max_tokens:500,
-          system:'你是 Zen Capsule 的 AI 助理。將信件列表分類為「急件」「待辦」「純資訊」三類，每類用 1-2 行說明。回覆繁體中文，不要用 markdown。',
-          messages:[{role:'user',content:`專注了 ${focusMins} 分鐘，攔截 ${intercepts} 次干擾。信件如下：\n\n${mockEmails.map(e=>`寄件人：${e.from}\n主旨：${e.subject}\n內容：${e.preview}`).join('\n\n')}`}]
-        })
-      })
-      const aiData=await response.json()
-      const summary=aiData.content?.[0]?.text||'無法取得摘要'
-      el.innerHTML=`<div style="font-size:13px;color:var(--text);line-height:1.9;white-space:pre-line;">${summary}</div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);">
-          ${googleConnected?'✓ 來自您真實的 Gmail':'⚠ 模擬資料 · 連結 Google 帳號後顯示真實信件'}
-        </div>`
-    }catch(e){
-      el.innerHTML=`
-        <div style="margin-bottom:10px;"><span style="font-family:'Space Mono',monospace;font-size:10px;color:#e05050;">🔴 急件</span><div style="font-size:13px;color:var(--text);margin-top:4px;">週五 Demo 準備確認（boss@company.com）</div></div>
-        <div style="margin-bottom:10px;"><span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--amber);">📋 待辦</span><div style="font-size:13px;color:var(--text);margin-top:4px;">設計稿 v3 更新 · 站立會議時間調整</div></div>
-        <div><span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);">📰 純資訊</span><div style="font-size:13px;color:var(--muted);margin-top:4px;">Newsletter × 1（可略過）</div></div>
-        <div style="margin-top:12px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);">${googleConnected?'✓ 來自您真實的 Gmail':'⚠ 模擬資料 · 連結 Google 帳號後顯示真實信件'}</div>`
-    }
-  }
-
-  // ── AI Urgency ─────────────────────────────────────
-  async function testUrgency(){
-    const content=document.getElementById('testMessage').value.trim()
-    if(!content){alert('請輸入訊息內容');return}
-    const btn=document.getElementById('testBtn')
-    btn.textContent='🤖 AI 分析中...';btn.disabled=true
-    document.getElementById('urgencyResult').style.display='none'
-    try{
-      const res=await fetch(`${API}/ai/analyse`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({content,senderName:document.getElementById('testSender').value||undefined,senderContact:document.getElementById('testContact').value||undefined,repeatCount:parseInt(document.getElementById('testRepeat').value)||1})})
-      const data=await res.json()
-      if(!res.ok)throw new Error(JSON.stringify(data))
-      const r=data.result
-      const cMap={critical:'🔴 CRITICAL · 危急',important:'🟠 IMPORTANT · 重要',normal:'🟡 NORMAL · 普通',social:'⚪ SOCIAL · 社交'}
-      const colMap={critical:'#e05050',important:'var(--amber)',normal:'#c9a96e',social:'var(--muted)'}
-      document.getElementById('resultCategory').textContent=cMap[r.category]||r.category
-      document.getElementById('resultCategory').style.color=colMap[r.category]||'var(--amber)'
-      document.getElementById('resultReason').textContent=r.reason
-      document.getElementById('resultScore').textContent=r.score
-      document.getElementById('resultScore').style.color=colMap[r.category]||'var(--amber)'
-      document.getElementById('scoreBar').style.width=r.score+'%'
-      document.getElementById('scoreBar').style.background=colMap[r.category]||'var(--amber)'
-      document.getElementById('breakthroughBadge').style.display=r.shouldBreakthrough?'block':'none'
-      document.getElementById('blockBadge').style.display=r.shouldBreakthrough?'none':'block'
-      document.getElementById('urgencyResult').style.display='block'
-      if(currentSessionId){
-        interceptCount++
-        document.getElementById('shieldInterceptCount').textContent=interceptCount
-        document.getElementById('activeInterceptions').textContent=`已攔截 ${interceptCount} 次干擾`
-      }
-    }catch(e){alert('錯誤：'+e.message)}
-    finally{btn.textContent='🤖 讓 AI 判斷';btn.disabled=false}
-  }
-
-  // ── Stats ──────────────────────────────────────────
-  async function loadStats(){
-    if(!token)return
-    try{
-      const res=await fetch(`${API}/sync/state`,{headers:{'Authorization':`Bearer ${token}`}})
-      const data=await res.json()
-      document.getElementById('statMinutes').textContent=data.todayStats?.totalMinutes??0
-      document.getElementById('statSessions').textContent=data.todayStats?.sessionsCount??0
-      document.getElementById('statInterceptions').textContent=data.todayStats?.totalInterceptions??0
-    }catch(e){console.error(e)}
-  }
-
-  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('authModal').style.display==='flex')submitAuth();})
-</script>
 </body>
 </html>

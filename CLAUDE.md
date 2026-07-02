@@ -22,6 +22,7 @@ zen-capsule/                          # npm workspaces monorepo
 │   ├── src/middleware/               # Auth middleware
 │   ├── src/lib/                      # Prisma client instance
 │   ├── prisma/schema.prisma          # Database schema
+│   ├── public/                       # 官網（landing/app/privacy/terms + css/ + js/）
 │   └── .env                          # Environment variables (NOT committed)
 ├── packages/mobile/                  # React Native Android app
 │   ├── src/screens/                  # Screen components
@@ -108,6 +109,14 @@ The mobile app is configured to use `http://10.0.2.2:3001` in development.
 - **AI prompts**: Wrap all user input in XML tags (`<user_content>`, `<user_sender>`, etc.) to prevent prompt injection. System prompts must instruct Claude to treat XML tag content as DATA only.
 - **Error handling**: Global error handler hides stack traces in production
 - **Export endpoints**: Use `X-Export-Key` header (NOT query parameters) for admin authentication
+
+### Website (`packages/backend/public/`)
+
+- **CSP 鐵則**: The backend sends `script-src 'self'` / `style-src 'self' fonts.googleapis.com` with NO `unsafe-inline`. Never add inline `<script>`, inline `style=""` attributes, or inline event handlers to any page — all styles go in `public/css/site.css`, all JS in `public/js/*.js` via `addEventListener`.
+- **XSS rule**: All dynamic DOM text uses `textContent`, never `innerHTML`.
+- **API base**: Relative `/api/v1` (same-origin) — never hardcode a host.
+- **Design language**: 樸實美（understated）— no flashy effects (no custom cursors, marquees, 3D tilts, hover glows). Quiet texture is OK (grain, vertical text, ghost numerals, slow breath ring).
+- **Browser preview**: The preview sandbox cannot read `.env`. Start the backend yourself (shell-source `.env` + `npx tsx src/index.ts`), then `preview_start("web")` — it runs the secret-free `scripts/preview-proxy.mjs` (binds 127.0.0.1, forwards to :3001).
 
 ### Mobile (React Native)
 

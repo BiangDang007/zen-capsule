@@ -15,18 +15,27 @@ const loginSchema = z.object({
   deviceId: z.string().max(200).optional(),
 })
 
-// ── DB-backed login attempt tracker (per-IP) ──────────────────────
+// ── DB-backed login attempt tracker (per-IP + per-account) ────────
+// Counting by ip OR email means rotating IPs cannot brute-force a single
+// account, and a single IP cannot hammer many accounts.
 const MAX_LOGIN_ATTEMPTS = 10
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
 
-async function checkLockout(ip: string): Promise<{ locked: boolean; retryAfterSec?: number }> {
+// Constant bcrypt hash compared against when the user doesn't exist, so the
+// response time doesn't reveal whether an email is registered.
+const TIMING_DUMMY_HASH = bcrypt.hashSync('zen-capsule-timing-equalizer', 12)
+
+async function checkLockout(ip: string, email: string): Promise<{ locked: boolean; retryAfterSec?: number }> {
   const windowStart = new Date(Date.now() - LOCKOUT_DURATION_MS)
-  const recentFails = await prisma.loginAttempt.count({
-    where: { ip, success: false, createdAt: { gte: windowStart } },
-  })
+  const failWhere = {
+    success: false,
+    createdAt: { gte: windowStart },
+    OR: [{ ip }, { email }],
+  }
+  const recentFails = await prisma.loginAttempt.count({ where: failWhere })
   if (recentFails >= MAX_LOGIN_ATTEMPTS) {
     const oldest = await prisma.loginAttempt.findFirst({
-      where: { ip, success: false, createdAt: { gte: windowStart } },
+      where: failWhere,
       orderBy: { createdAt: 'asc' },
     })
     const unlockAt = oldest ? oldest.createdAt.getTime() + LOCKOUT_DURATION_MS : Date.now() + LOCKOUT_DURATION_MS
@@ -71,9 +80,9 @@ export async function authRoutes(app: FastifyInstance) {
     const body = loginSchema.safeParse(req.body)
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() })
 
-    // Check IP-based lockout
+    // Check IP/account lockout
     const ip = req.ip
-    const lockout = await checkLockout(ip)
+    const lockout = await checkLockout(ip, body.data.email)
     if (lockout.locked) {
       return reply.status(429).send({
         error: `Too many login attempts. Try again in ${lockout.retryAfterSec} seconds.`,
@@ -82,6 +91,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const user = await prisma.user.findUnique({ where: { email: body.data.email } })
     if (!user) {
+      await bcrypt.compare(body.data.password, TIMING_DUMMY_HASH)
       await recordAttempt(ip, body.data.email, false)
       return reply.status(401).send({ error: 'Invalid credentials' })
     }

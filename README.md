@@ -25,7 +25,13 @@ zen-capsule/                          # npm workspaces monorepo
 │   ├── src/routes/sync.ts            # Cross-device state polling
 │   ├── src/services/urgency.service.ts  # Claude AI prompt + analysis
 │   ├── src/services/usage.service.ts    # Plan-aware daily usage limits
-│   └── prisma/schema.prisma          # Database schema
+│   ├── prisma/schema.prisma          # Database schema
+│   └── public/                       # 官網（由後端直接 serve，嚴格 CSP）
+│       ├── index.html                # Landing page（行銷主頁）
+│       ├── app.html                  # Web 體驗版主控台（登入/專注/AI 測試）
+│       ├── privacy.html / terms.html # 隱私權政策 / 服務條款（中英雙語）
+│       ├── css/site.css              # 全站唯一樣式（禁止 inline style）
+│       └── js/main.js, js/app.js     # 全站 JS（禁止 inline script / handler）
 ├── packages/mobile/                  # React Native Android app
 │   ├── src/screens/                  # 4 screens: Login, Focus, History, Settings
 │   ├── src/screens/BreakReportScreen.tsx  # Intercept report (opened from History)
@@ -37,6 +43,23 @@ zen-capsule/                          # npm workspaces monorepo
 ├── packages/shared/                  # Shared types, API client factory, endpoints
 └── packages/extension/               # Chrome Extension (Manifest V3, Gmail blocking)
 ```
+
+---
+
+## Website（官網）
+
+後端以 `@fastify/static` 直接 serve `packages/backend/public/`，本機網址 `http://localhost:3001/`。
+
+| 頁面 | 路徑 | 用途 |
+|------|------|------|
+| Landing | `/` | 產品介紹、定價（FREE / PRO US$4.99 對齊 `billing.ts`）、FAQ |
+| Web 體驗版 | `/app.html` | 註冊登入、專注計時、AI 緊急判斷、統計（`noindex`） |
+| 隱私權政策 | `/privacy.html` | 中英雙語，Google Play 上架用公開網址 |
+| 服務條款 | `/terms.html` | 訂閱、取消、免責（中英雙語） |
+
+**CSP 鐵則**：後端送出的 CSP 為 `script-src 'self'`、`style-src 'self' fonts.googleapis.com`——**官網頁面禁止任何 inline `<script>`、inline `style=""`、inline event handler**，一律寫進 `css/site.css` 與 `js/*.js`，否則瀏覽器會直接封鎖。
+
+**瀏覽器預覽（agent 用）**：preview 工具的沙箱不能讀 `.env`，因此 `.claude/launch.json` 的 `web` 設定跑的是 `scripts/preview-proxy.mjs`（無秘密、僅綁 127.0.0.1、轉發到 3001）。先自行用 shell 載入 `.env` 啟動後端，再 `preview_start("web")`。
 
 ---
 
@@ -252,6 +275,18 @@ Google Play Billing integration planned for subscription management.
 ---
 
 ## Android Build
+
+### CPU architectures (ABIs)
+
+The dev default is **`arm64-v8a` only** (set in `packages/mobile/android/gradle.properties`
+via `reactNativeArchitectures`). This covers the Apple Silicon emulator and modern real
+devices, and keeps native build output ~4x smaller (full 4-ABI debug builds reach ~4 GB).
+
+For a Play Store release that must support older 32-bit and x86 devices, override on the CLI:
+
+```bash
+./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
+```
 
 ### Debug
 
